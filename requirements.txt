@@ -1,0 +1,11 @@
+mlflow
+torch
+torchvision
+pandas
+numpy
+scikit-learn
+pyyaml
+python-dotenv
+black
+isort
+flake8
