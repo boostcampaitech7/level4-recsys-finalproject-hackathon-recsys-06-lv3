@@ -1,8 +1,5 @@
-import os
-
 import torch
 import yaml
-from dotenv import load_dotenv
 
 
 def load_mlflow_tracking_uri():

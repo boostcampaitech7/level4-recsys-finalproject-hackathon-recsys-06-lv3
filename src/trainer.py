@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from data.dataset import RecsysDataset
-from models.cf_model import CFModel
-from utils import load_mlflow_tracking_uri
+from src.data.dataset import RecsysDataset
+from src.models.cf_model import CFModel
+from src.utils import load_mlflow_tracking_uri
 
 
 class Trainer:

@@ -1,4 +1,4 @@
-from trainer import Trainer
+from src.trainer import Trainer
 
 if __name__ == "__main__":
     user_item_matrix = ...  # 사용자-아이템 행렬 로드
