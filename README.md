@@ -1,4 +1,7 @@
-- dataset link :  <https://www.kaggle.com/datasets/dbdmobile/myanimelist-dataset>
+## Dataset
+
+- [anime dataset 2023](https://www.kaggle.com/datasets/dbdmobile/myanimelist-dataset)
+- [anime dataset 2020](https://www.kaggle.com/datasets/hernan4444/anime-recommendation-database-2020?select=anime.csv)
 
 
 <details><summary> Server Structure </summary>
