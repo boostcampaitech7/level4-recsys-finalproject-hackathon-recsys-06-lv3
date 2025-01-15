@@ -5,7 +5,7 @@ import yaml
 def load_mlflow_tracking_uri():
 
     # config.yaml 파일에서 tracking_uri 읽기
-    with open("config.yaml", "r") as file:
+    with open("../config.yaml", "r") as file:
         config = yaml.safe_load(file)
         return config["mlflow"]["tracking_uri"]
 
