@@ -3,11 +3,8 @@ from typing import Tuple
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.callbacks import (
-    EarlyStopping,
-    LearningRateScheduler,
-    ModelCheckpoint,
-)
+from tensorflow.keras.callbacks import (EarlyStopping, LearningRateScheduler,
+                                        ModelCheckpoint)
 
 from src.config import *
 from src.models.recommender import RecommenderNet

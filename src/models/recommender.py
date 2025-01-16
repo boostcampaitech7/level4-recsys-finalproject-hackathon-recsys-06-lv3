@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from tensorflow.keras.layers import (Activation, BatchNormalization,
                                      Concatenate, Dense, Dot, Dropout,
                                      Embedding, Flatten, Input)
@@ -78,9 +79,12 @@ class RecommenderNet:
         Returns:
             컴파일된 케라스 모델
         """
-        user_input, anime_input, user_embedding, anime_embedding = (
-            self._create_base_layers()
-        )
+        (
+            user_input,
+            anime_input,
+            user_embedding,
+            anime_embedding,
+        ) = self._create_base_layers()
 
         # 내적 계산
         dot_product = Dot(axes=2, normalize=True, name="dot_product")(
@@ -117,9 +121,12 @@ class RecommenderNet:
         Returns:
             컴파일된 케라스 모델
         """
-        user_input, anime_input, user_embedding, anime_embedding = (
-            self._create_base_layers()
-        )
+        (
+            user_input,
+            anime_input,
+            user_embedding,
+            anime_embedding,
+        ) = self._create_base_layers()
 
         # Flatten embeddings
         user_flat = Flatten()(user_embedding)
@@ -156,7 +163,10 @@ class RecommenderNet:
         return Model(inputs=[user_input, anime_input], outputs=output)
 
     def build(
-        self, metrics: Optional[List[str]] = None, loss: str = "binary_crossentropy"
+        self,
+        metrics: Optional[List[str]] = None,
+        loss: str = "binary_crossentropy",
+        k: int = 10,
     ) -> Model:
         """
         추천 시스템 모델 생성 및 컴파일
@@ -169,7 +179,13 @@ class RecommenderNet:
             컴파일된 케라스 모델
         """
         if metrics is None:
-            metrics = ["mae", "mse"]
+            metrics = [
+                "mae",
+                "mse",
+                tf.keras.metrics.Precision(top_k=k),
+                tf.keras.metrics.Recall(top_k=k),
+                tf.keras.metrics.NDCGMetric(k=k),
+            ]
 
         if self.architecture == "dot_product":
             model = self._build_dot_product_model()
