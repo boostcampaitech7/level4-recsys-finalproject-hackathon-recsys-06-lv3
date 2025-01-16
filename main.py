@@ -1,3 +1,7 @@
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 from src.config import *
@@ -52,8 +56,34 @@ def main():
             strategy, (X_train, y_train), (X_test, y_test), n_users, n_animes
         )
 
-        # 추천 시스템 테스트
-        test_recommendations(model, rating_df, anime_df, synopsis_df, mappings)
+        print("\n=== final epoch validation metrics ===")
+
+        val_metrics = {
+            k: v[-1] for k, v in history.history.items() if k.startswith("val_")
+        }
+        for metric_name, value in val_metrics.items():
+            print(f"{metric_name}: {value:.4f}")
+
+        # predict 수행
+        y_pred = model.predict([X_test[:, 0], X_test[:, 1]])
+
+        # 테스트 데이터와 예측값을 DataFrame으로 만들기
+        data = {
+            "X_test_user": X_test[:, 0],
+            "X_test_item": X_test[:, 1],
+            "y_pred": y_pred.flatten(),
+            "y_test": y_test.flatten(),
+        }
+        df = pd.DataFrame(data)
+
+        # CSV 파일로 저장
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        df.to_csv(
+            f"{RECOMMENDATION_SAVE_PATH}/test_predictions_{timestamp}.csv", index=False
+        )
+
+        # # 추천 시스템 테스트
+        # test_recommendations(model, rating_df, anime_df, synopsis_df, mappings)
 
     except Exception as e:
         print(f"\n오류 발생: {str(e)}")

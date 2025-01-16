@@ -12,18 +12,16 @@ from src.train import extract_embeddings, save_embeddings
 
 def ranking_based_recommendations(
     model: tf.keras.Model,
-    random_user: int,
     rating_df: pd.DataFrame,
     df: pd.DataFrame,
     mappings: Tuple,
     synopsis_df: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    특정 사용자를 위한 애니메이션 추천 예측
+    test 데이터에 대한 추천 생성 및 metric 계산
 
     Args:
         model: 학습된 모델
-        random_user: 사용자 ID
         rating_df: 평점 데이터프레임
         df: 애니메이션 정보 데이터프레임
         mappings: (user2user_encoded, user_encoded2user, anime2anime_encoded, anime_encoded2anime) 매핑
@@ -32,72 +30,12 @@ def ranking_based_recommendations(
     Returns:
         추천 결과 데이터프레임
     """
-    user2user_encoded, user_encoded2user, anime2anime_encoded, anime_encoded2anime = (
-        mappings
-    )
-
-    print(f"사용자 {random_user}를 위한 추천:")
-    print("===" * 25)
-
-    # 사용자가 시청한 애니메이션 찾기
-    animes_watched_by_user = rating_df[rating_df.user_id == random_user]
-    anime_not_watched_df = df[
-        ~df["anime_id"].isin(animes_watched_by_user.anime_id.values)
-    ]
-
-    # 인코딩된 ID로 변환
-    anime_not_watched = list(
-        set(anime_not_watched_df["anime_id"]).intersection(
-            set(anime2anime_encoded.keys())
-        )
-    )
-    anime_not_watched = [[anime2anime_encoded.get(x)] for x in anime_not_watched]
-
-    # 사용자 ID 인코딩
-    user_encoder = user2user_encoded.get(random_user)
-
-    # 예측을 위한 입력 배열 생성
-    user_anime_array = np.hstack(
-        ([[user_encoder]] * len(anime_not_watched), anime_not_watched)
-    )
-    user_anime_array = [user_anime_array[:, 0], user_anime_array[:, 1]]
-
-    # 예측
-    ratings = model.predict(user_anime_array).flatten()
-
-    # 상위 10개 추천 선택
-    top_ratings_indices = (-ratings).argsort()[:10]
-    recommended_anime_ids = [
-        anime_encoded2anime.get(anime_not_watched[x][0]) for x in top_ratings_indices
-    ]
-
-    # 결과 생성
-    Results = []
-    for index, anime_id in enumerate(anime_not_watched):
-        rating = ratings[index]
-        id_ = anime_encoded2anime.get(anime_id[0])
-
-        if id_ in recommended_anime_ids:
-            try:
-                condition = df.anime_id == id_
-                name = df[condition]["Name"].values[0]
-                genre = df[condition].Genres.values[0]
-                sypnopsis = synopsis_df[synopsis_df.MAL_ID == id_].sypnopsis.values[0]
-            except:
-                continue
-
-            Results.append(
-                {
-                    "name": name,
-                    "pred_rating": rating,
-                    "genre": genre,
-                    "synopsis": sypnopsis,
-                }
-            )
-
-    print("---" * 25)
-    print("> Top 10 애니메이션 추천")
-    print("---" * 25)
+    (
+        user2user_encoded,
+        user_encoded2user,
+        anime2anime_encoded,
+        anime_encoded2anime,
+    ) = mappings
 
     Results = pd.DataFrame(Results).sort_values(by="pred_rating", ascending=False)
     print(Results)
@@ -255,17 +193,17 @@ def test_recommendations(model, rating_df, anime_df, synopsis_df, mappings):
     user_weights, anime_weights = extract_embeddings(model)
     save_embeddings(user_weights, anime_weights, EMBEDDING_SAVE_PATH)
 
-    # 아이템 기반 추천 테스트
-    print("\n아이템 기반 추천 테스트...")
-    similar_animes = test_item_recommendations(
-        anime_weights, mappings[2], mappings[3], anime_df, synopsis_df
-    )
+    # # 아이템 기반 추천 테스트
+    # print("\n아이템 기반 추천 테스트...")
+    # similar_animes = test_item_recommendations(
+    #     anime_weights, mappings[2], mappings[3], anime_df, synopsis_df
+    # )
 
-    # 사용자 기반 추천 테스트
-    print("\n사용자 기반 추천 테스트...")
-    test_user, recommendations = test_user_recommendations(
-        user_weights, mappings[0], mappings[1], rating_df, anime_df
-    )
+    # # 사용자 기반 추천 테스트
+    # print("\n사용자 기반 추천 테스트...")
+    # test_user, recommendations = test_user_recommendations(
+    #     user_weights, mappings[0], mappings[1], rating_df, anime_df
+    # )
 
     # # 추천 결과 평가
     # if not recommendations.empty:
@@ -279,12 +217,12 @@ def test_recommendations(model, rating_df, anime_df, synopsis_df, mappings):
     #     for metric, value in metrics.items():
     #         print(f"{metric}: {value:.4f}")
 
-    # 특정 사용자를 위한 예측 기반 추천
-    print("\n예측 기반 추천 테스트...")
-    # 평점이 많은 사용자 선택
-    user_ratings_count = rating_df["user_id"].value_counts()
-    random_user = user_ratings_count.index[0]
+    # # 특정 사용자를 위한 예측 기반 추천
+    # print("\n예측 기반 추천 테스트...")
+    # # 평점이 많은 사용자 선택
+    # user_ratings_count = rating_df["user_id"].value_counts()
+    # random_user = user_ratings_count.index[0]
 
     predicted_recommendations = ranking_based_recommendations(
-        model, random_user, rating_df, anime_df, mappings, synopsis_df
+        model, rating_df, anime_df, mappings, synopsis_df
     )

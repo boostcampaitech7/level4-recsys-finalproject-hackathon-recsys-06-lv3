@@ -2,6 +2,7 @@
 INPUT_DIR = "./anime-2020"
 MODEL_SAVE_PATH = "./save/models"
 EMBEDDING_SAVE_PATH = "./save/embeddings"
+RECOMMENDATION_SAVE_PATH = "./save/recommendations"
 
 # 데이터 로드 파라미터
 SAMPLE_SIZE = 1000000
