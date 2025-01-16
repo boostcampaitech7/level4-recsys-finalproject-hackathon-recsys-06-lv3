@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
+import numpy as np
 
 
 def preprocess_data(
@@ -44,13 +44,31 @@ def preprocess_data(
     # 평점 정규화 (0-1 사이로)
     rating_df["rating"] = rating_df["rating"] / 10.0
 
-    # 학습/테스트 데이터 분할
-    X = rating_df[["user", "anime"]].values
-    y = rating_df["rating"].values
+    # random seed 설정
+    np.random.seed(random_state)
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
-    )
+    # 사용자별 인덱스 분할을 한 번에 처리하는 방식
+    train_idx = []
+    test_idx = []
+
+    for _, group in rating_df.groupby("user"):
+        n = len(group)
+        n_test = max(1, int(n * test_size))
+
+        # 인덱스를 섞고 분할
+        shuffled_idx = np.random.permutation(group.index)
+        test_idx.extend(shuffled_idx[:n_test])
+        train_idx.extend(shuffled_idx[n_test:])
+
+    # 인덱스로 한 번에 분할
+    train_df = rating_df.loc[train_idx]
+    test_df = rating_df.loc[test_idx]
+
+    # 학습/테스트 데이터 준비
+    X_train = train_df[["user", "anime"]].values
+    y_train = train_df["rating"].values
+    X_test = test_df[["user", "anime"]].values
+    y_test = test_df["rating"].values
 
     # 인코딩 매핑 딕셔너리들을 튜플로 반환
     id_mappings = (
