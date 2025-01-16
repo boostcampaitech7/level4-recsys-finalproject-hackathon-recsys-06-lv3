@@ -1,4 +1,7 @@
 mlruns
 .vscode
 config.yaml
+save
+anime-2020
+*.pyc
 .env
