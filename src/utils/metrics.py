@@ -158,21 +158,47 @@ class RecommenderMetrics:
 
 class TrainingMetrics:
     @staticmethod
-    def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-        """Root Mean Square Error를 계산"""
-        return np.sqrt(np.mean((y_true - y_pred) ** 2))
+    def _batch_process(y_true: np.ndarray, y_pred: np.ndarray, batch_size: int = 10000):
+        """배치 단위로 데이터 처리"""
+        total = len(y_true)
+        for start in range(0, total, batch_size):
+            end = min(start + batch_size, total)
+            yield y_true[start:end], y_pred[start:end]
 
     @staticmethod
-    def mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-        """Mean Absolute Error를 계산"""
-        return np.mean(np.abs(y_true - y_pred))
+    def rmse(y_true: np.ndarray, y_pred: np.ndarray, batch_size: int = 10000) -> float:
+        """Root Mean Square Error를 배치 방식으로 계산"""
+        squared_sum = 0
+        count = 0
+        for batch_true, batch_pred in TrainingMetrics._batch_process(y_true, y_pred, batch_size):
+            squared_sum += np.sum((batch_true - batch_pred) ** 2)
+            count += len(batch_true)
+        return np.sqrt(squared_sum / count)
 
     @staticmethod
-    def binary_crossentropy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-        """Binary Cross Entropy를 계산"""
+    def mae(y_true: np.ndarray, y_pred: np.ndarray, batch_size: int = 10000) -> float:
+        """Mean Absolute Error를 배치 방식으로 계산"""
+        abs_sum = 0
+        count = 0
+        for batch_true, batch_pred in TrainingMetrics._batch_process(y_true, y_pred, batch_size):
+            abs_sum += np.sum(np.abs(batch_true - batch_pred))
+            count += len(batch_true)
+        return abs_sum / count
+
+    @staticmethod
+    def binary_crossentropy(y_true: np.ndarray, y_pred: np.ndarray, batch_size: int = 10000) -> float:
+        """Binary Cross Entropy를 배치 방식으로 계산"""
         epsilon = 1e-15
-        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
-        return np.mean(-y_true * np.log(y_pred) - (1 - y_true) * np.log(1 - y_pred))
+        cross_entropy_sum = 0
+        count = 0
+        for batch_true, batch_pred in TrainingMetrics._batch_process(y_true, y_pred, batch_size):
+            batch_pred = np.clip(batch_pred, epsilon, 1 - epsilon)
+            cross_entropy_sum += np.sum(
+                -batch_true * np.log(batch_pred) - 
+                (1 - batch_true) * np.log(1 - batch_pred)
+            )
+            count += len(batch_true)
+        return cross_entropy_sum / count
 
     @staticmethod
     def auc_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:

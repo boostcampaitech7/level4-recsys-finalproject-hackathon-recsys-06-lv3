@@ -9,7 +9,6 @@ from src.config import *
 from src.data.data_loader import load_data
 from src.test import test_recommendations
 from src.train import create_and_train_model
-from src.utils.metrics import RecommenderMetrics, calculate_metrics_for_users
 
 
 def device_init():

@@ -5,7 +5,7 @@ from src.config import *
 from src.data.preprocessing import preprocess_data
 
 
-def load_rating_data(input_dir, min_ratings=5):
+def load_rating_data(input_dir, min_ratings=800):
     file_path = f"{input_dir}/animelist.csv"
 
     rating_df = pd.read_csv(file_path, usecols=["user_id", "anime_id", "rating"])

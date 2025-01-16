@@ -16,26 +16,38 @@ from src.utils.metrics import TrainingMetrics
 class MetricsCallback(Callback):
     """사용자 정의 메트릭을 계산하고 기록하는 콜백"""
 
-    def __init__(self, validation_data):
+    def __init__(self, validation_data, batch_size=MemoryConfig.METRIC_BATCH_SIZE):
         super().__init__()
-        self.validation_data = validation_data
-        self.metrics = TrainingMetrics()
-
-        # 설정에서 메트릭 목록 가져오기
-        self.metrics_to_track = EvaluationConfig.TRAINING_METRICS
-        self.history = {metric: [] for metric in self.metrics_to_track}
-
-        # 베스트 모델 트래킹을 위한 변수들
-        self.best_loss = float("inf")
+        self.validation_data = validation_data # 검증 데이터 저장
+        self.batch_size = batch_size # 배치 크기 설정
+        self.metrics = TrainingMetrics() # 메트릭 계산 클래스 초기화
+        self.metrics_to_track = EvaluationConfig.TRAINING_METRICS # 추적할 메트릭
+        self.history = {metric: [] for metric in self.metrics_to_track} # 메트릭 기록
+        self.best_loss = float('inf')
         self.best_metrics = {}
 
+        # 메모리 최적화를 위한 추가 설정
+        self.gc_frequency = MemoryConfig.GC_FREQUENCY
+        self.use_mixed_precision = MemoryConfig.USE_MIXED_PRECISION
+
+        # 혼합 정밀도 설정
+        if self.use_mixed_precision:
+            policy = tf.keras.mixed_precision.Policy('mixed_float16')
+            tf.keras.mixed_precision.set_global_policy(policy)
+        
     def _calculate_metrics(self, y_true, y_pred) -> Dict[str, float]:
-        """설정된 메트릭들을 계산"""
+        """설정된 메트릭들을 배치 방식으로 계산"""
         metric_values = {}
         for metric_name in self.metrics_to_track:
             if hasattr(self.metrics, metric_name):
                 metric_func = getattr(self.metrics, metric_name)
-                metric_values[metric_name] = float(metric_func(y_true, y_pred))
+                if metric_name in ['rmse', 'mae', 'binary_crossentropy']:
+                    # 배치 처리가 필요한 메트릭
+                    value = metric_func(y_true, y_pred, self.batch_size)
+                else:
+                    # AUC나 AP같은 전체 데이터가 필요한 메트릭
+                    value = metric_func(y_true, y_pred)
+                metric_values[metric_name] = float(value)
         return metric_values
 
     def _save_metrics(self, epoch: int, metrics: Dict[str, float]):
@@ -62,6 +74,11 @@ class MetricsCallback(Callback):
     def on_epoch_end(self, epoch, logs=None):
         if (epoch + 1) % LoggingConfig.LOG_INTERVAL != 0:
             return
+
+        # 메모리 정리
+        if (epoch + 1) % self.gc_frequency == 0:
+            import gc
+            gc.collect()
 
         X_val, y_val = self.validation_data
         y_pred = self.model.predict([X_val[:, 0], X_val[:, 1]])
@@ -102,30 +119,60 @@ def create_callbacks(model_path: str, validation_data) -> list:
     """모델 학습을 위한 콜백 함수들을 생성"""
 
     def lr_schedule(epoch):
+        """학습률 스케줄링 함수
+        1. Warmup (RAMPUP_EPOCHS): 학습률을 천천히 증가
+        2. Hold (SUSTAIN_EPOCHS): 최대 학습률 유지
+        3. Decay: 지수적으로 감소
+        """
         if epoch < RAMPUP_EPOCHS:
-            return (MAX_LR - START_LR) / RAMPUP_EPOCHS * epoch + START_LR
+            # Warm-up 기간: 선형적으로 증가
+            return START_LR + (MAX_LR - START_LR) * (epoch / RAMPUP_EPOCHS)
         elif epoch < RAMPUP_EPOCHS + SUSTAIN_EPOCHS:
+            # 최대 학습률 유지 기간
             return MAX_LR
         else:
-            return (MAX_LR - MIN_LR) * EXP_DECAY ** (
-                epoch - RAMPUP_EPOCHS - SUSTAIN_EPOCHS
-            ) + MIN_LR
+            # 지수적 감소 기간
+            decay_epoch = epoch - RAMPUP_EPOCHS - SUSTAIN_EPOCHS
+            return MAX_LR * (EXP_DECAY ** decay_epoch) + MIN_LR
 
+    # 모델 저장 경로 생성
+    os.makedirs(model_path, exist_ok=True)
+    
     callbacks = [
+        # 모델 체크포인트 저장
         ModelCheckpoint(
-            filepath=os.path.join(model_path, "model_{epoch:02d}.h5"),
+            filepath=os.path.join(model_path, "model_{epoch:02d}_{val_loss:.4f}.h5"),
             save_best_only=LoggingConfig.SAVE_BEST_ONLY,
             monitor="val_loss",
             mode="min",
         ),
-        LearningRateScheduler(lr_schedule, verbose=1),
+        
+        # 학습률 조정
+        LearningRateScheduler(
+            lr_schedule, 
+            verbose=1
+        ),
+        
+        # 조기 종료
         EarlyStopping(
             monitor="val_loss",
             patience=EvaluationConfig.EARLY_STOPPING_PATIENCE,
             min_delta=EvaluationConfig.EARLY_STOPPING_MIN_DELTA,
             restore_best_weights=True,
+            verbose=1
         ),
-        MetricsCallback(validation_data),
+        
+        # 메모리 정리를 위한 콜백
+        tf.keras.callbacks.LambdaCallback(
+            on_epoch_end=lambda epoch, logs: gc.collect() 
+            if (epoch + 1) % MemoryConfig.GC_FREQUENCY == 0 else None
+        ),
+        
+        # 커스텀 메트릭 콜백
+        MetricsCallback(
+            validation_data,
+            batch_size=MemoryConfig.METRIC_BATCH_SIZE
+        ),
     ]
 
     return callbacks
