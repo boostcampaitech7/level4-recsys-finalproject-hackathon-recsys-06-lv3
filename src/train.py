@@ -3,8 +3,11 @@ from typing import Tuple
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.callbacks import (EarlyStopping, LearningRateScheduler,
-                                        ModelCheckpoint)
+from tensorflow.keras.callbacks import (
+    EarlyStopping,
+    LearningRateScheduler,
+    ModelCheckpoint,
+)
 
 from src.config import *
 from src.models.recommender import RecommenderNet
@@ -44,6 +47,11 @@ def extract_embeddings(model: tf.keras.Model) -> Tuple[np.ndarray, np.ndarray]:
 
     user_weights = user_layer.get_weights()[0]
     anime_weights = anime_layer.get_weights()[0]
+
+    user_weights = user_weights / np.linalg.norm(user_weights, axis=1).reshape((-1, 1))
+    anime_weights = anime_weights / np.linalg.norm(anime_weights, axis=1).reshape(
+        (-1, 1)
+    )
 
     return user_weights, anime_weights
 
