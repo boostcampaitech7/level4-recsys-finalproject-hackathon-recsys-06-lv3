@@ -5,7 +5,7 @@ from src.config import *
 from src.data.preprocessing import preprocess_data
 
 
-def load_rating_data(input_dir, min_ratings=100):
+def load_rating_data(input_dir, min_ratings=5):
     file_path = f"{input_dir}/animelist.csv"
 
     rating_df = pd.read_csv(file_path, usecols=["user_id", "anime_id", "rating"])
@@ -38,7 +38,7 @@ def load_data():
     try:
         rating_df = load_rating_data(
             INPUT_DIR,
-            # min_ratings=100,
+            # min_ratings=5, # 일단 5명 미만은 8:2로 자르기 애매하므로 5로 세팅하고 추후 변경
         )
 
         if rating_df.empty:
