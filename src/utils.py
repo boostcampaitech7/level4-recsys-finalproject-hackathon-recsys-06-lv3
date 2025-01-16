@@ -2,11 +2,11 @@ import torch
 import yaml
 
 
-def load_mlflow_tracking_uri():
+def get_config():
     # config.yaml 파일에서 tracking_uri 읽기
     with open("../config.yaml", "r") as file:
         config = yaml.safe_load(file)
-        return config["mlflow"]["tracking_uri"]
+        return config
 
 
 def save_model(model, path):

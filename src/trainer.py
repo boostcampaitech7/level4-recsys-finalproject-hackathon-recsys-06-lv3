@@ -1,33 +1,33 @@
+from typing import Any
 import mlflow
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from src.data.dataset import RecsysDataset
-from src.models.cf_model import CFModel
-from src.utils import load_mlflow_tracking_uri
 
 
 class Trainer:
     def __init__(
         self,
+        model,
+        criterion,
+        optimizer,
         user_item_matrix,
         num_users,
         num_items,
-        embedding_dim=50,
-        batch_size=32,
-        learning_rate=0.001,
-    ):
+        config,
+    ) -> None:
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
         self.user_item_matrix = user_item_matrix
         self.num_users = num_users
         self.num_items = num_items
-        self.embedding_dim = embedding_dim
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.model = CFModel(num_users, num_items, embedding_dim)
-        self.criterion = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        self.tracking_uri = load_mlflow_tracking_uri()
+        self.embedding_dim = config["embedding_dim"]
+        self.batch_size = config["batch_size"]
+        self.learning_rate = config["learning_rate"]
+        # MLFlow Tracking URI 로드
+        self.tracking_uri = config["mlflow"]["tracking_uri"]
         mlflow.set_tracking_uri(self.tracking_uri)
 
     def recall_at_top_k(self, predictions, targets, k=10):
@@ -35,7 +35,9 @@ class Trainer:
         hits = (targets.gather(1, top_k_indices) > 0).float().sum()
         return hits / targets.size(0)
 
-    def _run_epoch(self, dataloader, training=True):
+    def _run_epoch(
+        self, dataloader, training=True
+    ) -> tuple[Any | float, Any | float] | Any | float:
         total_loss = 0
         total_recall = 0
         if training:
@@ -63,7 +65,7 @@ class Trainer:
             return avg_loss, avg_recall
         return avg_loss
 
-    def train(self, epochs=10):
+    def train(self, epochs=10) -> None:
         dataset = RecsysDataset(self.user_item_matrix)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         mlflow.start_run()
@@ -81,15 +83,15 @@ class Trainer:
         mlflow.log_artifact("model.pth")
         mlflow.end_run()
 
-    def validate(self):
+    def validate(self) -> None:
         dataset = RecsysDataset(self.user_item_matrix)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
-        self.model.load_state_dict(torch.load("model.pth"))
         avg_loss, avg_recall = self._run_epoch(dataloader, training=False)
+        mlflow.log_metric("val_loss", avg_loss)
+        mlflow.log_metric("recall_at_top10", avg_recall)
         print(f"Validation Loss: {avg_loss}, Recall@Top10: {avg_recall}")
 
-    def infer(self, user_id, item_id):
-        self.model.load_state_dict(torch.load("model.pth"))
+    def infer(self, user_id, item_id) -> float:
         self.model.eval()
         user = torch.tensor([user_id], dtype=torch.long)
         item = torch.tensor([item_id], dtype=torch.long)
