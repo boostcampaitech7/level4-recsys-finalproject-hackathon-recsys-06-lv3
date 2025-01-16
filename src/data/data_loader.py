@@ -9,6 +9,7 @@ def load_rating_data(input_dir, min_ratings=100):
     file_path = f"{input_dir}/animelist.csv"
 
     rating_df = pd.read_csv(file_path, usecols=["user_id", "anime_id", "rating"])
+    rating_df = rating_df[rating_df["rating"] > 0].reset_index()
 
     # 최소 평가 수 필터링
     n_ratings = rating_df["user_id"].value_counts()
