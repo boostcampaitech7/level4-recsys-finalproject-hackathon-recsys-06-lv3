@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import pandas as pd
+import numpy as np
 
 
 def preprocess_data(
@@ -43,19 +44,25 @@ def preprocess_data(
     # 평점 정규화 (0-1 사이로)
     rating_df["rating"] = rating_df["rating"] / 10.0
 
-    # 사용자별 train-test split
-    train_data = []
-    test_data = []
+    # random seed 설정
+    np.random.seed(random_state)
 
-    for user, group in rating_df.groupby("user"):
-        group = group.sample(frac=1, random_state=random_state)  # 데이터 섞기
-        n_test = max(1, int(len(group) * test_size))  # 최소 1개는 test에 포함
+    # 사용자별 인덱스 분할을 한 번에 처리하는 방식
+    train_idx = []
+    test_idx = []
 
-        test_data.append(group.iloc[:n_test])
-        train_data.append(group.iloc[n_test:])
+    for _, group in rating_df.groupby("user"):
+        n = len(group)
+        n_test = max(1, int(n * test_size))
 
-    train_df = pd.concat(train_data)
-    test_df = pd.concat(test_data)
+        # 인덱스를 섞고 분할
+        shuffled_idx = np.random.permutation(group.index)
+        test_idx.extend(shuffled_idx[:n_test])
+        train_idx.extend(shuffled_idx[n_test:])
+
+    # 인덱스로 한 번에 분할
+    train_df = rating_df.loc[train_idx]
+    test_df = rating_df.loc[test_idx]
 
     # 학습/테스트 데이터 준비
     X_train = train_df[["user", "anime"]].values
