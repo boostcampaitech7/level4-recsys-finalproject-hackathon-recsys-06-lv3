@@ -1,2 +1,13 @@
+model : 'NCF'
+learning_rate : 0.001
+batch_size : 256
+epochs : 10
+
 mlflow:
   tracking_uri: server1:port
+
+NCF:
+  factor_num: 10
+  num_layers: 64
+  dropout: 0.2
+  
