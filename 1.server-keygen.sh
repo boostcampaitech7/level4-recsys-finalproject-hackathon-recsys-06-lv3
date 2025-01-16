@@ -2,6 +2,8 @@
 source .env
 
 ssh server$server_no << ENDSSH
+apt-get update
+apt-get install -y git
 mkdir "$data_log_path"
 mkdir -p /data/ephemeral/home/data/output
 git config --global user.name "$username"
@@ -16,5 +18,4 @@ ENDSSH
 
 echo "모든 작업이 완료되었습니다."
 read
-
 
