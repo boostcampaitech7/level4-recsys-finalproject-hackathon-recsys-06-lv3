@@ -3,11 +3,11 @@ import os, re
 import pandas as pd
 import numpy as np
 
-from .abstract_preprocessor import AbstractPreProcess
+from .abstract_preprocessor import AbstractPreProcessor
 
-class AnimePreprocess(AbstractPreProcess):
+class AnimePreprocessor(AbstractPreProcessor):
     def __init__(self, dataset: str, data_path, export_path):
-        super(AnimePreprocess).__init__(dataset, data_path, export_path)
+        super().__init__(dataset, data_path, export_path)
 
     def pre_process(self) -> None:
         item_synopsis: pd.DataFrame = self.data["anime_with_synopsis"]
