@@ -5,7 +5,7 @@ import numpy as np
 
 from .abstract_preprocessor import AbstractPreProcessor
 
-class AnimePreprocessor(AbstractPreProcessor):
+class AnimePreProcessor(AbstractPreProcessor):
     def __init__(self, dataset: str, data_path, export_path):
         super().__init__(dataset, data_path, export_path)
 
