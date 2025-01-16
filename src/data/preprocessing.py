@@ -1,7 +1,6 @@
 from typing import Tuple
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
 
 
 def preprocess_data(
@@ -44,13 +43,25 @@ def preprocess_data(
     # 평점 정규화 (0-1 사이로)
     rating_df["rating"] = rating_df["rating"] / 10.0
 
-    # 학습/테스트 데이터 분할
-    X = rating_df[["user", "anime"]].values
-    y = rating_df["rating"].values
+    # 사용자별 train-test split
+    train_data = []
+    test_data = []
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
-    )
+    for user, group in rating_df.groupby("user"):
+        group = group.sample(frac=1, random_state=random_state)  # 데이터 섞기
+        n_test = max(1, int(len(group) * test_size))  # 최소 1개는 test에 포함
+
+        test_data.append(group.iloc[:n_test])
+        train_data.append(group.iloc[n_test:])
+
+    train_df = pd.concat(train_data)
+    test_df = pd.concat(test_data)
+
+    # 학습/테스트 데이터 준비
+    X_train = train_df[["user", "anime"]].values
+    y_train = train_df["rating"].values
+    X_test = test_df[["user", "anime"]].values
+    y_test = test_df["rating"].values
 
     # 인코딩 매핑 딕셔너리들을 튜플로 반환
     id_mappings = (
