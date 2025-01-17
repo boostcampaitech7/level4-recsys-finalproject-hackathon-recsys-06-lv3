@@ -6,7 +6,7 @@ scp -r config.yaml server$server_no:/data/ephemeral/home/$git_project_name
 # ssh 명령어에 .env에서 불러온 변수 사용
 ssh server$server_no << ENDSSH
 #!/bin/bash
-cd /data/ephemeral/home/level2-competitiveds-recsys-06
+cd /data/ephemeral/home/level4-recsys-finalproject-hackathon-recsys-06-lv3
 
 git fetch
 git pull
