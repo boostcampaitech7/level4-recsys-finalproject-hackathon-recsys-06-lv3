@@ -63,6 +63,9 @@ class Trainer:
 
         with torch.set_grad_enabled(training):
             for step, (user, item, rating) in enumerate(dataloader):
+                user = user.to(self.device)
+                item = item.to(self.device)
+                rating = rating.to(self.device)
                 prediction: torch.Tensor = self.model(user, item, rating).to(
                     self.device
                 )
@@ -83,7 +86,6 @@ class Trainer:
     def train(self, epochs=10) -> None:
         dataset = RecsysDataset(self.train_df)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
-
         for epoch in range(epochs):
             avg_loss = self._run_epoch(dataloader, training=True)
             avg_loss, avg_recall = self._run_epoch(dataloader, training=False)
