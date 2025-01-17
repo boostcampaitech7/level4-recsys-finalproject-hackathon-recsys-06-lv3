@@ -33,7 +33,6 @@ class Trainer:
         self.batch_size = config["batch_size"]
         self.learning_rate = config["learning_rate"]
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
         # MLFlow Tracking URI 로드
         self.tracking_uri = config["mlflow"]["tracking_uri"]
         self._mlflow_init(config)
@@ -64,7 +63,9 @@ class Trainer:
 
         with torch.set_grad_enabled(training):
             for step, (user, item, rating) in enumerate(dataloader):
-                prediction: torch.Tensor = self.model(user, item, rating)
+                prediction: torch.Tensor = self.model(user, item, rating).to(
+                    self.device
+                )
                 loss = self.criterion(prediction, rating)
                 if training:
                     self.optimizer.zero_grad()
