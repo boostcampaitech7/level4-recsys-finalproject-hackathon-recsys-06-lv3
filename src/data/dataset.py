@@ -5,8 +5,8 @@ from torch.utils.data import Dataset
 
 class RecsysDataset(Dataset):
     def __init__(self, dataframe):
-        self.users = dataframe["user_id"].values
-        self.items = dataframe["item_id"].values
+        self.users = dataframe["user"].values
+        self.items = dataframe["item"].values
         self.ratings = dataframe["rating"].values
 
     def __len__(self):

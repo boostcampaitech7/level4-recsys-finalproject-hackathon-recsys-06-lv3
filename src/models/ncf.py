@@ -17,15 +17,12 @@ class NeuralCollaborativeFiltering(nn.Module):
         self.dropout = config["dropout"]
         factor_num = config["factor_num"]
         num_layers = config["num_layers"]
-
+        # embedding_size = config["embedding_size"]
+        embedding_size = factor_num * (2 ** (num_layers - 1))
         self.embed_user_GMF = nn.Embedding(user_num, factor_num)
         self.embed_item_GMF = nn.Embedding(item_num, factor_num)
-        self.embed_user_MLP = nn.Embedding(
-            user_num, factor_num * (2 ** (num_layers - 1))
-        )
-        self.embed_item_MLP = nn.Embedding(
-            item_num, factor_num * (2 ** (num_layers - 1))
-        )
+        self.embed_user_MLP = nn.Embedding(user_num, embedding_size)
+        self.embed_item_MLP = nn.Embedding(item_num, embedding_size)
 
         MLP_modules = []
         for i in range(num_layers):

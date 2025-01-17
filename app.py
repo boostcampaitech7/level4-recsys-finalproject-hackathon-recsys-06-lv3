@@ -1,3 +1,4 @@
+import mlflow
 import numpy as np
 import pandas as pd
 from src.trainer import Trainer
@@ -5,13 +6,13 @@ import src.models as models
 import torch.nn as nn
 import torch
 
-from utils import get_config
+from src.utils import get_config
 
 
-def load_data(test_size: float = 0.2, random_state: int = 42):
+def load_data(data_path, test_size: float = 0.2, random_state: int = 42):
     # random seed 설정
     np.random.seed(random_state)
-    df = pd.read_csv("./data/rating_complete.csv")
+    df = pd.read_csv(data_path)
     # 사용자 ID 인코딩
     user_ids = df["user_id"].unique().tolist()
     user2user_encoded = {x: i for i, x in enumerate(user_ids)}
@@ -24,7 +25,7 @@ def load_data(test_size: float = 0.2, random_state: int = 42):
 
     # ID를 인코딩된 값으로 변환
     df["user"] = df["user_id"].map(user2user_encoded)
-    df["anime"] = df["anime_id"].map(anime2anime_encoded)
+    df["item"] = df["anime_id"].map(anime2anime_encoded)
 
     # 평점 정규화 (0-1 사이로)
     df["rating"] = df["rating"] / 10.0
@@ -56,12 +57,12 @@ def load_data(test_size: float = 0.2, random_state: int = 42):
 
 
 if __name__ == "__main__":
-    (train_df, test_df), mappings = load_data()
+    config = get_config()
+    data_path = config["data_path"]
+    (train_df, test_df), mappings = load_data(data_path)
     # 모델 크기 계산
     num_users = len(mappings[0])
     num_items = len(mappings[2])
-    user_item_matrix = ...  # 사용자-아이템 행렬 로드
-    config = get_config()
     model_name = config["model"]
     model = getattr(models, model_name)(num_users, num_items, config[model_name])
     criterion = getattr(nn, config["loss"])()
@@ -72,8 +73,4 @@ if __name__ == "__main__":
     )
     trainer.train(config["epochs"])
     trainer.validate()
-    # # Inference
-    # user_id = 1
-    # item_id = 1
-    # prediction = trainer.infer(user_id, item_id)
-    # print(f"Predicted rating for user {user_id} and item {item_id}: {prediction}")
+    mlflow.end_run()
