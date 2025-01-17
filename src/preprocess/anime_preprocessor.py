@@ -6,10 +6,11 @@ import pandas as pd
 
 from src.data.preprocess import Preprocess
 
+from .abstract_preprocessor import AbstractPreProcessor
 
-class AnimePreprocess(Preprocess):
+class AnimePreProcessor(AbstractPreProcessor):
     def __init__(self, dataset: str, data_path, export_path):
-        super(AnimePreprocess).__init__(dataset, data_path, export_path)
+        super().__init__(dataset, data_path, export_path)
 
     def pre_process(self) -> None:
         item_synopsis: pd.DataFrame = self.data["anime_with_synopsis"]
@@ -54,28 +55,21 @@ class AnimePreprocess(Preprocess):
         ratings = ratings[ratings["rating"] != 0]
 
         # 각 df에서 피처명 조정
-        item_synopsis.rename(
-            columns={"MAL_ID": "Item_id", "sypnopsis": "Synopsis"}, inplace=True
-        )
-        items.rename(columns={"MAL_ID": "Item_id"}, inplace=True)
-        ratings.rename(
-            columns={
-                "anime_id": "Item_id",
-                "user_id": "User_id",
-                "rating": "Rating",
-                "watching_status": "Watching_status",
-                "watched_episodes": "Watched_episodes",
-            },
-            inplace=True,
-        )
-        users.rename(columns={"Mal ID": "User_id"}, inplace=True)
+        item_synopsis.rename(columns={'MAL_ID': 'item_id',
+                                'sypnopsis': 'synopsis'}, inplace=True)
+        items.rename(columns={'MAL_ID': 'item_id'}, inplace=True)
+        ratings.rename(columns={'anime_id': 'item_id',
+                            'user_id': 'user_id',
+                            'rating': 'rating',
+                            'watching_status': 'watching_status',
+                            'watched_episodes': 'watched_episodes'}, inplace=True)
+        users.rename(columns={'Mal ID': 'user_id'}, inplace=True)
 
-        self.export_dfs = {
-            "anime_with_synopsis": item_synopsis,
-            "anime": items,
-            "animelist": ratings,
-            "user_detail": users,
-        }
+        # 칼럼명 소문자로 통일
+        item_synopsis.columns = item_synopsis.columns.str.lower()
+        items.columns = items.columns.str.lower()
+        ratings.columns = ratings.columns.str.lower()
+        users.columns = users.columns.str.lower()
 
     def save_data(self) -> None:
         os.makedirs(self.export_path, exist_ok=True)
