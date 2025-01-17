@@ -1,6 +1,9 @@
 from datetime import datetime
-from typing import Any
+import mlflow.data.dataset_registry
+import mlflow.data.dataset_source
+from mlflow.data.pandas_dataset import from_pandas
 import mlflow
+import mlflow.data.pandas_dataset
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -40,6 +43,8 @@ class Trainer:
         mlflow.log_param("num_users", self.num_users)
         mlflow.log_param("num_items", self.num_items)
         mlflow.log_params(config)
+        mlflow.data.pandas_dataset.from_pandas(self.train_df, name="train_df")
+        mlflow.data.pandas_dataset.from_pandas(self.test_df, name="test_df")
 
     def recall_at_top_k(self, predictions, targets, k=10):
         top_k_indices = np.argsort(predictions)[-k:]
