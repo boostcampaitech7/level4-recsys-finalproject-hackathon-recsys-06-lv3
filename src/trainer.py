@@ -12,7 +12,8 @@ class Trainer:
         model,
         criterion,
         optimizer,
-        user_item_matrix,
+        train_df,
+        test_df,
         num_users,
         num_items,
         config,
@@ -20,7 +21,8 @@ class Trainer:
         self.model = model
         self.criterion = criterion
         self.optimizer = optimizer
-        self.user_item_matrix = user_item_matrix
+        self.train_df = train_df
+        self.test_df = test_df
         self.num_users = num_users
         self.num_items = num_items
         self.embedding_dim = config["embedding_dim"]
@@ -66,7 +68,7 @@ class Trainer:
         return avg_loss
 
     def train(self, epochs=10) -> None:
-        dataset = RecsysDataset(self.user_item_matrix)
+        dataset = RecsysDataset(self.train_df)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         mlflow.start_run()
         mlflow.log_param("num_users", self.num_users)
@@ -84,7 +86,7 @@ class Trainer:
         mlflow.end_run()
 
     def validate(self) -> None:
-        dataset = RecsysDataset(self.user_item_matrix)
+        dataset = RecsysDataset(self.test_df)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         avg_loss, avg_recall = self._run_epoch(dataloader, training=False)
         mlflow.log_metric("val_loss", avg_loss)

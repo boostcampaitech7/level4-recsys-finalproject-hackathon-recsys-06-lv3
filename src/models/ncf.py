@@ -3,16 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class NeauralCollaborativeFiltering(nn.Module):
+class NeuralCollaborativeFiltering(nn.Module):
     def __init__(self, user_num, item_num, config):
         super().__init__()
         """
-		user_num: number of users;
-		item_num: number of items;
-		factor_num: number of predictive factors;
-		num_layers: the number of layers in MLP model;
-		dropout: dropout rate between fully connected layers;
-		"""
+        user_num: number of users;
+        item_num: number of items;
+        factor_num: number of predictive factors;
+        num_layers: the number of layers in MLP model;
+        dropout: dropout rate between fully connected layers;
+        """
 
         self.dropout = config["dropout"]
         factor_num = config["factor_num"]
@@ -35,7 +35,7 @@ class NeauralCollaborativeFiltering(nn.Module):
             MLP_modules.append(nn.ReLU())
         self.MLP_layers = nn.Sequential(*MLP_modules)
 
-        predict_size = factor_num * 2
+        predict_size = factor_num * 2 + 1  # 추가된 Rating 정보를 위한 공간
         self.predict_layer = nn.Linear(predict_size, 1)
 
         self._init_weight_()
@@ -56,7 +56,7 @@ class NeauralCollaborativeFiltering(nn.Module):
             if isinstance(m, nn.Linear) and m.bias is not None:
                 m.bias.data.zero_()
 
-    def forward(self, user, item):
+    def forward(self, user, item, rating):
         embed_user_GMF = self.embed_user_GMF(user)
         embed_item_GMF = self.embed_item_GMF(item)
         output_GMF = embed_user_GMF * embed_item_GMF
@@ -66,6 +66,6 @@ class NeauralCollaborativeFiltering(nn.Module):
         interaction = torch.cat((embed_user_MLP, embed_item_MLP), -1)
         output_MLP = self.MLP_layers(interaction)
 
-        concat = torch.cat((output_GMF, output_MLP), -1)
+        concat = torch.cat((output_GMF, output_MLP, rating.unsqueeze(-1)), -1)
         prediction = self.predict_layer(concat)
         return prediction.view(-1)

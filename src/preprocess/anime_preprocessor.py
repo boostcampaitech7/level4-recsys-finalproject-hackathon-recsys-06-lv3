@@ -4,9 +4,8 @@ import re
 import numpy as np
 import pandas as pd
 
-from src.data.preprocess import Preprocess
-
 from .abstract_preprocessor import AbstractPreProcessor
+
 
 class AnimePreProcessor(AbstractPreProcessor):
     def __init__(self, dataset: str, data_path, export_path):
@@ -55,15 +54,21 @@ class AnimePreProcessor(AbstractPreProcessor):
         ratings = ratings[ratings["rating"] != 0]
 
         # 각 df에서 피처명 조정
-        item_synopsis.rename(columns={'MAL_ID': 'item_id',
-                                'sypnopsis': 'synopsis'}, inplace=True)
-        items.rename(columns={'MAL_ID': 'item_id'}, inplace=True)
-        ratings.rename(columns={'anime_id': 'item_id',
-                            'user_id': 'user_id',
-                            'rating': 'rating',
-                            'watching_status': 'watching_status',
-                            'watched_episodes': 'watched_episodes'}, inplace=True)
-        users.rename(columns={'Mal ID': 'user_id'}, inplace=True)
+        item_synopsis.rename(
+            columns={"MAL_ID": "item_id", "sypnopsis": "synopsis"}, inplace=True
+        )
+        items.rename(columns={"MAL_ID": "item_id"}, inplace=True)
+        ratings.rename(
+            columns={
+                "anime_id": "item_id",
+                "user_id": "user_id",
+                "rating": "rating",
+                "watching_status": "watching_status",
+                "watched_episodes": "watched_episodes",
+            },
+            inplace=True,
+        )
+        users.rename(columns={"Mal ID": "user_id"}, inplace=True)
 
         # 칼럼명 소문자로 통일
         item_synopsis.columns = item_synopsis.columns.str.lower()
