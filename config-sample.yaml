@@ -1,37 +1,21 @@
 model : 'NCF'
-learning_rate : 0.001
-batch_size : 256
-epochs : 10
 # 경로 설정
-input_dir : "./anime-2020"
-model_save_path : "./save/models"
-embedding_save_path : "./save/embeddings"
-recomendation_save_path : "./save/recommendations"
-
-# 데이터 로드 파라미터
-sample_size : 1000000
+data_path: "./data/rating_complete.csv"
 
 # 모델 파라미터
-embedding_size : 128
-batch_size : 10000
-
-# 학습률 스케줄링 파라미터
-start_lr: 0.00001
-min_lr : 0.00001
-max_lr : 0.00005
-rampup_epoch: 5
-sustain_epoch: 0
-exp_decay: 0.8
+learning_rate : 0.001
+batch_size : 1024
+epochs : 1
+loss: "MSELoss"
 
 # TPU 설정
 tpu_init : False
 
-
-mlflow:
-  tracking_uri: server1:port
-
 NCF:
-  factor_num: 10
-  num_layers: 64
+  factor_num: 3
+  num_layers: 2
   dropout: 0.2
+  embedding_size : 128
   
+mlflow:
+  tracking_uri: server:port

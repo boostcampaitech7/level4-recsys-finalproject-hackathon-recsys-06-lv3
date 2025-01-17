@@ -13,7 +13,6 @@ git pull
 
 /opt/conda/bin/python3 -m pip install -r ./requirements.txt
 
-cd ./src
 # app.py가 실행 중인지 확인
 if pgrep -f "/opt/conda/bin/python3 app.py" > /dev/null
 then
