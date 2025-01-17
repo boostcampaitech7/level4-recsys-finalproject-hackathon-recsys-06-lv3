@@ -23,7 +23,7 @@ class Trainer:
         num_items,
         config,
     ) -> None:
-        self.model = model
+
         self.criterion = criterion
         self.optimizer = optimizer
         self.train_df = train_df
@@ -33,6 +33,7 @@ class Trainer:
         self.batch_size = config["batch_size"]
         self.learning_rate = config["learning_rate"]
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = model.to(self.device)
         # MLFlow Tracking URI 로드
         self.tracking_uri = config["mlflow"]["tracking_uri"]
         self._mlflow_init(config)
@@ -66,15 +67,15 @@ class Trainer:
                 user = user.to(self.device)
                 item = item.to(self.device)
                 rating = rating.to(self.device)
-                prediction: torch.Tensor = self.model(user, item, rating).to(
-                    self.device
-                )
+                prediction: torch.Tensor = self.model(user, item, rating)
                 loss = self.criterion(prediction, rating)
                 if training:
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
-                recall = self.recall_at_top_k(prediction.detach().numpy(), rating)
+                recall = self.recall_at_top_k(
+                    prediction.cpu().detach().numpy(), rating.cpu().detach().numpy()
+                )
                 total_recall += recall.item()
                 total_loss += loss.item()
 
