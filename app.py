@@ -29,6 +29,7 @@ def load_data(data_path, val_size: float = 0.2, random_state: int = 42):
 
     # 평점 정규화 (0-1 사이로)
     df["rating"] = df["rating"] / 10.0
+    df["labels"] = 0.9  # Label 값 Float으로 처리
     # 사용자별 인덱스 분할을 한 번에 처리하는 방식
     train_idx = []
     val_idx = []

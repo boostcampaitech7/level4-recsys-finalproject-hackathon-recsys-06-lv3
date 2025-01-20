@@ -116,13 +116,14 @@ class Trainer:
             self.model.eval()
 
         with torch.set_grad_enabled(training):
-            for step, (user, item, rating) in enumerate(dataloader):
+            for step, (user, item, rating, label) in enumerate(dataloader):
                 user = user.to(self.device)
                 item = item.to(self.device)
                 rating = rating.to(self.device)
+                label = label.to(self.device)
                 prediction = self.model(user, item, rating).to(self.device)
 
-                loss = self.criterion(prediction, rating)
+                loss = self.criterion(prediction, label)
                 if training:
                     self.optimizer.zero_grad()
                     loss.backward()
@@ -130,10 +131,9 @@ class Trainer:
 
                 # Calculate metrics
                 pred_np = prediction.detach().cpu().numpy()
-                rating_np = rating.cpu().numpy()
-
-                recall = self.recall_at_k(pred_np, rating_np)
-                ndcg = self.ndcg_at_k(pred_np, rating_np)
+                label = label.detach().cpu().numpy()
+                recall = self.recall_at_k(pred_np, label)
+                ndcg = self.ndcg_at_k(pred_np, label)
 
                 total_recall += recall
                 total_ndcg += ndcg
@@ -148,16 +148,20 @@ class Trainer:
     def train(self, epochs=10) -> None:
         train_dataset = RecsysDataset(self.train_df)
         val_dataset = RecsysDataset(self.val_df)
-        
-        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
-        val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
+
+        train_dataloader = DataLoader(
+            train_dataset, batch_size=self.batch_size, shuffle=True
+        )
+        val_dataloader = DataLoader(
+            val_dataset, batch_size=self.batch_size, shuffle=False
+        )
 
         for epoch in range(epochs):
-           # 학습
+            # 학습
             train_loss, train_recall, train_ndcg = self._run_epoch(
                 train_dataloader, training=True
             )
-            
+
             # 검증
             val_loss, val_recall, val_ndcg = self._run_epoch(
                 val_dataloader, training=False
@@ -186,7 +190,7 @@ class Trainer:
         # 모델 저장
         model_path = self._save_model()
         print(f"\nModel saved to: {model_path}")
-        mlflow.log_artifact("model.pth")
+        mlflow.log_artifact(model_path)
 
     def validate(self) -> None:
         dataset = RecsysDataset(self.val_df)
