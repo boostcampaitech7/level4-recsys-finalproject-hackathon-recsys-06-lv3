@@ -1,11 +1,11 @@
 import mlflow
 import numpy as np
 import pandas as pd
-from src.trainer import Trainer
-import src.models as models
-import torch.nn as nn
 import torch
+import torch.nn as nn
 
+import src.models as models
+from src.trainer import Trainer
 from src.utils import get_config
 
 
