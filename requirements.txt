@@ -11,4 +11,5 @@ isort
 flake8
 jupyter
 pynvml
+tqdm
 boto3
