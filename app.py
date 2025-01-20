@@ -9,7 +9,7 @@ import torch
 from src.utils import get_config
 
 
-def load_data(data_path, test_size: float = 0.2, random_state: int = 42):
+def load_data(data_path, val_size: float = 0.2, random_state: int = 42):
     # random seed 설정
     np.random.seed(random_state)
     df = pd.read_csv(data_path)
@@ -31,20 +31,20 @@ def load_data(data_path, test_size: float = 0.2, random_state: int = 42):
     df["rating"] = df["rating"] / 10.0
     # 사용자별 인덱스 분할을 한 번에 처리하는 방식
     train_idx = []
-    test_idx = []
+    val_idx = []
 
     for _, group in df.groupby("user"):
         n = len(group)
-        n_test = max(1, int(n * test_size))
+        n_test = max(1, int(n * val_size))
 
         # 인덱스를 섞고 분할
         shuffled_idx = np.random.permutation(group.index)
-        test_idx.extend(shuffled_idx[:n_test])
+        val_idx.extend(shuffled_idx[:n_test])
         train_idx.extend(shuffled_idx[n_test:])
 
     # 인덱스로 한 번에 분할
     train_df = df.loc[train_idx]
-    test_df = df.loc[test_idx]
+    val_df = df.loc[val_idx]
     # 인코딩 매핑 딕셔너리들을 튜플로 반환
     id_mappings = (
         user2user_encoded,
@@ -53,13 +53,13 @@ def load_data(data_path, test_size: float = 0.2, random_state: int = 42):
         anime_encoded2anime,
     )
 
-    return (train_df, test_df), id_mappings
+    return (train_df, val_df), id_mappings
 
 
 if __name__ == "__main__":
     config = get_config()
     data_path = config["data_path"]
-    (train_df, test_df), mappings = load_data(data_path)
+    (train_df, val_df), mappings = load_data(data_path)
     # 모델 크기 계산
     num_users = len(mappings[0])
     num_items = len(mappings[2])
@@ -69,8 +69,8 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
 
     trainer = Trainer(
-        model, criterion, optimizer, train_df, test_df, num_users, num_items, config
+        model, criterion, optimizer, train_df, val_df, num_users, num_items, config
     )
     trainer.train(config["epochs"])
-    trainer.validate()
+    # trainer.validate()
     mlflow.end_run()

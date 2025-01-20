@@ -20,7 +20,7 @@ class Trainer:
         criterion,
         optimizer,
         train_df,
-        test_df,
+        val_df,
         num_users,
         num_items,
         config,
@@ -29,7 +29,7 @@ class Trainer:
         self.criterion = criterion
         self.optimizer = optimizer
         self.train_df = train_df
-        self.test_df = test_df
+        self.val_df = val_df
         self.num_users = num_users
         self.num_items = num_items
         self.batch_size = config["batch_size"]
@@ -49,7 +49,7 @@ class Trainer:
         mlflow.log_param("num_items", self.num_items)
         mlflow.log_params(config)
         mlflow.data.pandas_dataset.from_pandas(self.train_df, name="train_df")
-        mlflow.data.pandas_dataset.from_pandas(self.test_df, name="test_df")
+        mlflow.data.pandas_dataset.from_pandas(self.val_df, name="val_df")
 
     def _save_model(self):
         save_dir = "./save/models"
@@ -146,15 +146,22 @@ class Trainer:
         return avg_loss, avg_recall, avg_ndcg
 
     def train(self, epochs=10) -> None:
-        dataset = RecsysDataset(self.train_df)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        train_dataset = RecsysDataset(self.train_df)
+        val_dataset = RecsysDataset(self.val_df)
+        
+        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
 
         for epoch in range(epochs):
+           # 학습
             train_loss, train_recall, train_ndcg = self._run_epoch(
-                dataloader, training=True
+                train_dataloader, training=True
             )
-            val_loss, val_recall, val_ndcg = self._run_epoch(dataloader, training=False)
-
+            
+            # 검증
+            val_loss, val_recall, val_ndcg = self._run_epoch(
+                val_dataloader, training=False
+            )
             # Log metrics
             mlflow.log_metrics(
                 {
@@ -182,7 +189,7 @@ class Trainer:
         mlflow.log_artifact("model.pth")
 
     def validate(self) -> None:
-        dataset = RecsysDataset(self.test_df)
+        dataset = RecsysDataset(self.val_df)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         avg_loss, avg_recall, avg_ndcg = self._run_epoch(dataloader, training=False)
 
