@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+
 class AbstractPreProcessor(ABC):
     def __init__(self, dataset, data_path: str, export_path: str):
         self.dataset = dataset
