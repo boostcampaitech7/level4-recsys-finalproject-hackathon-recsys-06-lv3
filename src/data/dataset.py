@@ -8,6 +8,7 @@ class RecsysDataset(Dataset):
         self.users = dataframe["user"].values
         self.items = dataframe["item"].values
         self.ratings = dataframe["rating"].values
+        self.labels = dataframe["labels"].values
 
     def __len__(self):
         return len(self.users)
@@ -16,8 +17,10 @@ class RecsysDataset(Dataset):
         user = self.users[idx]
         item = self.items[idx]
         rating = self.ratings[idx]
+        label = self.labels[idx]
         return (
             torch.tensor(user, dtype=torch.long),
             torch.tensor(item, dtype=torch.long),
             torch.tensor(rating, dtype=torch.float),
+            torch.tensor(label, dtype=torch.float),
         )
