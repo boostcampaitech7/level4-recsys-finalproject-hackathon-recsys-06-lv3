@@ -50,14 +50,13 @@ class AnimePreProcessor(AbstractPreProcessor):
             item_synopsis["Score"].replace("Unknown", np.nan).astype(float)
         )
 
-        # ratings에서 rating 피처의 값이 0인 데이터 제외
-        ratings = ratings[ratings["rating"] != 0]
-
         # 각 df에서 피처명 조정
         item_synopsis.rename(
             columns={"MAL_ID": "item_id", "sypnopsis": "synopsis"}, inplace=True
         )
-        items.rename(columns={"MAL_ID": "item_id"}, inplace=True)
+        items.rename(
+            columns={"MAL_ID": "item_id"}, 
+            inplace=True)
         ratings.rename(
             columns={
                 "anime_id": "item_id",
@@ -75,6 +74,35 @@ class AnimePreProcessor(AbstractPreProcessor):
         items.columns = items.columns.str.lower()
         ratings.columns = ratings.columns.str.lower()
         users.columns = users.columns.str.lower()
+
+        # 이상치 처리
+        # 이상치 제거를 위해 user_id에 따른 rating 갯수 확인
+        user_rating_counts = ratings["user_id"].value_counts()
+
+        Q1 = user_rating_counts.quantile(0.25)
+        Q3 = user_rating_counts.quantile(0.75)
+        IQR = Q3 - Q1
+        upper_fence = Q3 + 1.5 * IQR
+
+        filtered_users = user_rating_counts[user_rating_counts <= upper_fence].index
+        ratings = ratings[ratings["user_id"].isin(filtered_users)]
+
+        # interaction 칼럼 추가
+        ratings['interaction'] = np.where(
+            ((ratings['rating'] == 0) | (ratings['rating'] >= 6)) & (ratings['watching_status'] != 4),
+            1, 0
+        )
+        user_interection_counts = ratings[ratings['interaction'] == 1]['user_id'].value_counts()
+        filtered_users_with_interactions = user_interection_counts[user_interection_counts >= 11].index
+        ratings = ratings[ratings['user_id'].isin(filtered_users_with_interactions)]
+
+        # export_dfs에 전처리된 데이터 저장
+        self.export_dfs = {
+            "anime": items,
+            "anime_with_synopsis": item_synopsis,
+            "animelist": ratings,
+            "user_detail": users
+        }
 
     def save_data(self) -> None:
         os.makedirs(self.export_path, exist_ok=True)
