@@ -8,111 +8,137 @@ from .abstract_preprocessor import AbstractPreProcessor
 
 
 class AnimePreProcessor(AbstractPreProcessor):
-    def __init__(self, dataset: str, data_path, export_path):
+    def __init__(self, dataset: str, data_path, export_path, sample_size: int = 10):
         super().__init__(dataset, data_path, export_path)
+        self.data = {
+            "anime_with_synopsis": pd.read_csv(os.path.join(data_path, "anime_with_synopsis.csv")),
+            "anime": pd.read_csv(os.path.join(data_path, "anime.csv")),
+            "animelist": pd.read_csv(os.path.join(data_path, "animelist.csv")),
+            "user_detail": pd.read_csv(os.path.join(data_path, "user_detail.csv")),
+        }
+        self.sample_size = sample_size
 
-    def pre_process(self) -> None:
+    def pre_process(self) -> None:        
         item_synopsis: pd.DataFrame = self.data["anime_with_synopsis"]
         items: pd.DataFrame = self.data["anime"]
         ratings: pd.DataFrame = self.data["animelist"]
         users: pd.DataFrame = self.data["user_detail"]
 
-        # items에서 Genres 전처리
+        # items 전처리
+        items = self._preprocess_genres(items)
+        items = self._process_item_features(items)
+
+        # item_synopsis 전처리
+        item_synopsis = self._preprocess_synopsis(item_synopsis)
+
+        # ratings 전처리
+        ratings.rename(
+            columns={
+                "anime_id": "item_id", "user_id": "user_id", "rating": "rating", "watching_status": "watching_status", "watched_episodes": "watched_episodes"
+            }, inplace=True
+        )
+        ratings.columns = ratings.columns.str.lower()
+
+        # users 전처리
+        users.rename(columns={"Mal ID": "user_id"}, inplace=True)
+        users.columns = users.columns.str.lower()
+
+        # 유저 리뷰 수 기준 이상치 제거 및 train-test split
+        ratings = self._filter_users_with_interactions(ratings)
+        train, test = self._split_train_test(ratings)
+
+        # export_dfs에 전처리된 데이터 저장
+        self.export_dfs = {
+            "items": items,
+            "item_synopsis": item_synopsis,
+            "train": train,
+            "test": test,
+            "users": users
+        }
+
+    def _preprocess_genres(self, items: pd.DataFrame) -> pd.DataFrame:
         genres_dummies = items["Genres"].str.get_dummies(sep=", ")
         genres_dummies = genres_dummies.reindex(sorted(genres_dummies.columns), axis=1)
         items["Genres"] = genres_dummies.apply(
             lambda row: ",".join(genres_dummies.columns[row == 1]), axis=1
         )
+        return items
+    
+    def _process_item_features(self, items) -> pd.DataFrame:
+        replace_features = ["Score", "Episodes", "Ranked"]
+        items[replace_features] = items[replace_features].replace("Unknown", np.nan)
+        items[replace_features] = items[replace_features].astype(float)
 
-        # 데이터 중 "Unknown" 값을 포함하는 일부 피처들에 대해 NaN으로 대체
-        # Genres 피처에 "Unknown"값 존재에 따라 해당 피처 제외 및 안정적 처리를 위함
-        features_list = ["Score", "Episodes", "Ranked"]
-        items[features_list] = items[features_list].replace("Unknown", np.nan)
-        items[features_list] = items[features_list].astype(float)
-
-        items["Aired"] = (
-            items["Aired"]
-            .apply(
-                lambda x: (
-                    re.search(r"\d{4}", x).group(0)
-                    if re.search(r"\d{4}", x)
-                    else np.nan
-                )
-            )
-            .astype(float)
+        items["Aired"] = (items["Aired"].apply(
+            lambda x: (re.search(r"\d{4}", x).group(0) if re.search(r"\d{4}", x) else np.nan)
+            ).astype(float)
         )
+
         items["Duration"] = items["Duration"].replace("Unknown", np.nan)
         items["Duration"] = items["Duration"].apply(
             lambda x: int(x.split()[0]) if isinstance(x, str) else x
         )
-
-        item_synopsis["Score"] = (
-            item_synopsis["Score"].replace("Unknown", np.nan).astype(float)
-        )
-
-        # 각 df에서 피처명 조정
-        item_synopsis.rename(
-            columns={"MAL_ID": "item_id", "sypnopsis": "synopsis"}, inplace=True
-        )
-        items.rename(
-            columns={"MAL_ID": "item_id"}, 
-            inplace=True)
-        ratings.rename(
-            columns={
-                "anime_id": "item_id",
-                "user_id": "user_id",
-                "rating": "rating",
-                "watching_status": "watching_status",
-                "watched_episodes": "watched_episodes",
-            },
-            inplace=True,
-        )
-        users.rename(columns={"Mal ID": "user_id"}, inplace=True)
-
-        # 칼럼명 소문자로 통일
-        item_synopsis.columns = item_synopsis.columns.str.lower()
+        
+        items.rename(columns={"MAL_ID": "item_id"}, inplace=True)
         items.columns = items.columns.str.lower()
-        ratings.columns = ratings.columns.str.lower()
-        users.columns = users.columns.str.lower()
 
-        # 이상치 처리
-        # 이상치 제거를 위해 user_id에 따른 rating 갯수 확인
+        return items
+    
+    def _preprocess_synopsis(self, item_synopsis) -> pd.DataFrame:
+        item_synopsis["Score"] = item_synopsis["Score"].replace("Unknown", np.nan).astype(float)
+        
+        item_synopsis.rename(columns={"MAL_ID": "item_id", "sypnopsis": "synopsis"}, inplace=True)
+        item_synopsis.columns = item_synopsis.columns.str.lower()
+
+        return item_synopsis
+    
+    def _filter_users_with_interactions(self, ratings) -> pd.DataFrame:
         user_rating_counts = ratings["user_id"].value_counts()
-
         Q1 = user_rating_counts.quantile(0.25)
         Q3 = user_rating_counts.quantile(0.75)
         IQR = Q3 - Q1
         upper_fence = Q3 + 1.5 * IQR
 
         filtered_users = user_rating_counts[user_rating_counts <= upper_fence].index
-        ratings = ratings[ratings["user_id"].isin(filtered_users)]
+        filtered_ratings = ratings[ratings["user_id"].isin(filtered_users)]
 
-        # interaction 칼럼 추가
-        ratings['interaction'] = np.where(
-            ((ratings['rating'] == 0) | (ratings['rating'] >= 6)) & (ratings['watching_status'] != 4),
+        filtered_ratings.loc[:, 'interaction'] = np.where(
+            ((filtered_ratings['rating'] == 0) | (filtered_ratings['rating'] >= 6)) & 
+            (filtered_ratings['watching_status'] != 4),
             1, 0
         )
-        user_interection_counts = ratings[ratings['interaction'] == 1]['user_id'].value_counts()
-        filtered_users_with_interactions = user_interection_counts[user_interection_counts >= 11].index
-        ratings = ratings[ratings['user_id'].isin(filtered_users_with_interactions)]
 
-        # export_dfs에 전처리된 데이터 저장
-        self.export_dfs = {
-            "anime": items,
-            "anime_with_synopsis": item_synopsis,
-            "animelist": ratings,
-            "user_detail": users
-        }
+        user_interaction_counts = (
+            filtered_ratings[filtered_ratings['interaction'] == 1]['user_id'].value_counts()
+        )
+        filtered_users_with_interactions = user_interaction_counts[user_interaction_counts >= 11].index
+
+        return filtered_ratings[
+            filtered_ratings["user_id"].isin(filtered_users_with_interactions)
+        ]
+    
+    def _split_train_test(self, ratings) -> tuple:
+        test = (
+            ratings[ratings["interaction"] == 1]
+            .groupby("user_id")
+            .apply(lambda x: x.sample(n=self.sample_size, random_state=42)).reset_index(drop=True)
+        )
+
+        train = ratings[
+            ~ratings.set_index(["user_id", "item_id"]).index.isin(
+                test.set_index(["user_id", "item_id"]).index
+            )
+        ].reset_index(drop=True)
+
+        return train, test
 
     def save_data(self) -> None:
         os.makedirs(self.export_path, exist_ok=True)
         os.makedirs(os.path.join(self.export_path, self.dataset), exist_ok=True)
 
-        for key in self.export_dfs:
-            print(f"{key} is export file in {self.export_path}")
-            print(
-                f"{key} column list is {self.export_dfs[key].columns} - shape({self.export_dfs[key].shape})"
-            )
-            self.export_dfs[key].to_csv(
-                os.path.join(self.export_path, self.dataset, key), index=False
-            )
+        for key, df in self.export_dfs.items():
+            file_path = os.path.join(self.export_path, self.dataset, f"{key}.csv")
+            print(f"Saving {key} to {file_path}")
+            print(f"{key} column list is {df.columns} - shape({df.shape})")
+
+            df.to_csv(file_path, index=False)
