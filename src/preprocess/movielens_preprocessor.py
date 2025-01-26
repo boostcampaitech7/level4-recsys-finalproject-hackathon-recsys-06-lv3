@@ -38,7 +38,7 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         ratings = self.data["ratings"]
 
         # items 전처리
-        items = self._process_item_features(items)
+        items = self._clean_movie_titles_and_years(items)
         # items = self._preprocess_genres(items)
 
         # ratings 전처리
@@ -72,7 +72,7 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         """
         return items
 
-    def _process_item_features(self, items) -> pd.DataFrame:
+    def _clean_movie_titles_and_years(self, items) -> pd.DataFrame:
         """
         items에서 year 생성 및 결측치 처리
         title에서 year 제거
