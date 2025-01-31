@@ -111,7 +111,7 @@ class CausalLMPredictionDataset(LMDataset):
         self,
         df,
         max_length=128,
-        validation_mode=False,
+        valid_mode=False,
         user_col="user_id",
         item_col="item_id",
         time_col="time_idx",
@@ -126,14 +126,14 @@ class CausalLMPredictionDataset(LMDataset):
             time_col=time_col,
         )
 
-        self.validation_mode = validation_mode
+        self.valid_mode = valid_mode
 
     def __getitem__(self, idx):
 
         user_id = self.user_ids[idx]
         item_sequence = self.data[user_id]
 
-        if self.validation_mode:
+        if self.valid_mode:
             target = item_sequence[-1]
             input_ids = item_sequence[-self.max_length - 1 : -1]
             item_sequence = item_sequence[:-1]

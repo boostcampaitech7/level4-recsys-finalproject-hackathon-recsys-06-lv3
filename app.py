@@ -24,7 +24,7 @@ from src.preprocess import MovieLensPreProcessor
 from src.utils import compute_metrics, compute_sampled_metrics, preds2recs
 
 
-@hydra.main(version_base=None, config_name="config")
+@hydra.main(version_base=None, config_path="configs", config_name="config")
 def main(config):
 
     print(OmegaConf.to_yaml(config))
@@ -42,9 +42,11 @@ def main(config):
     else:
         task = None
 
+    print("전처리 중...")
     preprocessor = MovieLensPreProcessor(config.data_path)
-    train, valid, valid_full, test, item_count = preprocessor.pre_process()
+    train, valid, valid_full, test, item_count = preprocessor._pre_process()
     save_recommendations_to_csv(test, "test_set.csv")
+    print("전처리 완료")
 
     train_loader, eval_loader = create_dataloaders(train, valid_full, config)
     model = create_model(config, item_count=item_count)
@@ -115,7 +117,7 @@ def create_model(config, item_count):
         add_head = True
 
     if config.model == "SASRec":
-        model = SASRec(item_num=item_count, add_head=add_head, **config.model_params)
+        model = SASRec(item_num=item_count, add_head=add_head, **config.SASRec)
 
     return model
 
@@ -142,7 +144,7 @@ def training(model, train_loader, eval_loader, config):
         devices=1,
         accelerator="gpu",
         enable_checkpointing=True,
-        **config["trainer_params"],
+        max_epochs=config.epochs,
     )
 
     trainer.fit(

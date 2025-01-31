@@ -12,7 +12,7 @@ dataloader:
   batch_size: 128
   test_batch_size: 256
   num_workers: 8
-  validation_size: 10000
+  valid_size: 10000
 
 seqrec_module:
   lr: 0.001
@@ -35,6 +35,7 @@ SASRec:
 patience: 10
 sampled_metrics: False
 top_k_metrics: [10, 100]
+epochs: 100
   
 mlflow:
   tracking_uri: server:port
