@@ -11,11 +11,11 @@ from .abstract_preprocessor import AbstractPreProcessor
 class MovieLensPreProcessor(AbstractPreProcessor):
     def __init__(
         self,
-        dataset: str,
+        # dataset: str,
         data_path: str,
         # export_path: str,
     ):
-        super().__init__(dataset, data_path)
+        super().__init__(None, data_path, None)
         self.data = {
             "items": pd.read_csv(os.path.join(data_path, "movies.csv")),
             "ratings": pd.read_csv(os.path.join(data_path, "ratings.csv")),
@@ -33,7 +33,7 @@ class MovieLensPreProcessor(AbstractPreProcessor):
 
         return user_interactions
 
-    def pre_process(self) -> None:
+    def _pre_process(self) -> None:
         items = self.data["items"]
         ratings = self.data["ratings"]
 
@@ -52,8 +52,23 @@ class MovieLensPreProcessor(AbstractPreProcessor):
             inplace=True,
         )
 
-        # 유저 리뷰 수 기준 이상치 제거 및 train-test split
+        # 유저 리뷰 수 기준 이상치 제거
         ratings = self._filter_users_with_interactions(ratings)
+
+        # user_id와 item_id 매핑 생성
+        user2id = {id: idx for idx, id in enumerate(ratings["user_id"].unique())}
+        item2id = {id: idx for idx, id in enumerate(ratings["item_id"].unique())}
+
+        # 매핑된 값으로 user_id와 item_id 변경
+        ratings["user_id"] = ratings["user_id"].map(user2id)
+        ratings["item_id"] = ratings["item_id"].map(item2id)
+
+        self.user2id = user2id
+        self.item2id = item2id
+        self.id2user = {v: k for k, v in user2id.items()}
+        self.id2item = {v: k for k, v in item2id.items()}
+
+        # train-valid-test split
         return self._split_train_valid_test(ratings)
 
         # 영화 일정 리뷰 수 이하 제거 (추후 구현 필요)
