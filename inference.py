@@ -1,12 +1,15 @@
-import os
 import argparse
+import os
 from datetime import datetime
+
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
 from tqdm import tqdm
+
 from src.models import NCF
 from src.utils import get_config
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate recommendations for users')

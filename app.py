@@ -1,77 +1,274 @@
-import mlflow
+"""
+Run experiment.
+"""
+
+import os
+import time
+
+import hydra
 import numpy as np
 import pandas as pd
+import pytorch_lightning as pl
 import torch
-import torch.nn as nn
+from clearml import Task
+from omegaconf import OmegaConf
+from pytorch_lightning.callbacks import (EarlyStopping, ModelCheckpoint,
+                                         ModelSummary, TQDMProgressBar)
+from torch.utils.data import DataLoader
 
-import src.models as models
-from src.trainer import Trainer
-from src.utils import get_config
+from src.data.dataset import (CausalLMDataset, CausalLMPredictionDataset,
+                              PaddingCollateFn)
+from src.models import SASRec
+from src.modules import SeqRec, SeqRecWithSampling
+from src.preprocess import MovieLensPreProcessor
+from src.utils import compute_metrics, compute_sampled_metrics, preds2recs
 
 
-def load_data(data_path, val_size: float = 0.2, random_state: int = 42):
-    # random seed 설정
-    np.random.seed(random_state)
-    df = pd.read_csv(data_path)
-    # 사용자 ID 인코딩
-    user_ids = df["user_id"].unique().tolist()
-    user2user_encoded = {x: i for i, x in enumerate(user_ids)}
-    user_encoded2user = {i: x for i, x in enumerate(user_ids)}
+@hydra.main(version_base=None, config_name="config")
+def main(config):
 
-    # 애니메이션 ID 인코딩
-    anime_ids = df["anime_id"].unique().tolist()
-    anime2anime_encoded = {x: i for i, x in enumerate(anime_ids)}
-    anime_encoded2anime = {i: x for i, x in enumerate(anime_ids)}
+    print(OmegaConf.to_yaml(config))
 
-    # ID를 인코딩된 값으로 변환
-    df["user"] = df["user_id"].map(user2user_encoded)
-    df["item"] = df["anime_id"].map(anime2anime_encoded)
+    if hasattr(config, "cuda_visible_devices"):
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(config.cuda_visible_devices)
 
-    # 평점 정규화 (0-1 사이로)
-    df["rating"] = df["rating"] / 10.0
-    df["labels"] = 0.9  # Label 값 Float으로 처리
-    # 사용자별 인덱스 분할을 한 번에 처리하는 방식
-    train_idx = []
-    val_idx = []
+    if hasattr(config, "project_name"):
+        task = Task.init(
+            project_name=config.project_name,
+            task_name=config.task_name,
+            reuse_last_task_id=False,
+        )
+        task.connect(OmegaConf.to_container(config))
+    else:
+        task = None
 
-    for _, group in df.groupby("user"):
-        n = len(group)
-        n_test = max(1, int(n * val_size))
+    preprocessor = MovieLensPreProcessor(config.data_path)
+    train, valid, valid_full, test, item_count = preprocessor.pre_process()
+    save_recommendations_to_csv(test, "test_set.csv")
 
-        # 인덱스를 섞고 분할
-        shuffled_idx = np.random.permutation(group.index)
-        val_idx.extend(shuffled_idx[:n_test])
-        train_idx.extend(shuffled_idx[n_test:])
+    train_loader, eval_loader = create_dataloaders(train, valid_full, config)
+    model = create_model(config, item_count=item_count)
+    start_time = time.time()
+    trainer, seqrec_module = training(model, train_loader, eval_loader, config)
+    training_time = time.time() - start_time
+    print("training_time", training_time)
 
-    # 인덱스로 한 번에 분할
-    train_df = df.loc[train_idx]
-    val_df = df.loc[val_idx]
-    # 인코딩 매핑 딕셔너리들을 튜플로 반환
-    id_mappings = (
-        user2user_encoded,
-        user_encoded2user,
-        anime2anime_encoded,
-        anime_encoded2anime,
+    recs_valid, valid_dataset = predict(trainer, seqrec_module, train, config)
+    evaluate(
+        recs_valid,
+        valid,
+        train,
+        seqrec_module,
+        valid_dataset,
+        task,
+        config,
+        prefix="val",
     )
 
-    return (train_df, val_df), id_mappings
+    recs_test, test_dataset = predict(trainer, seqrec_module, valid_full, config)
+    evaluate(
+        recs_test, test, train, seqrec_module, test_dataset, task, config, prefix="test"
+    )
+    save_recommendations_to_csv(recs_test, "test_recommendations.csv")
+
+    if task is not None:
+        task.get_logger().report_single_value("training_time", training_time)
+        task.close()
+
+
+def create_dataloaders(train, valid, config):
+
+    valid_size = config.dataloader.valid_size
+    valid_users = valid.user_id.unique()
+    if valid_size and (valid_size < len(valid_users)):
+        valid_users = np.random.choice(valid_users, size=valid_size, replace=False)
+        valid = valid[valid.user_id.isin(valid_users)]
+
+    train_dataset = CausalLMDataset(train, **config["dataset"])
+    eval_dataset = CausalLMPredictionDataset(
+        valid, max_length=config.dataset.max_length, valid_mode=True
+    )
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=config.dataloader.batch_size,
+        shuffle=True,
+        num_workers=config.dataloader.num_workers,
+        collate_fn=PaddingCollateFn(),
+    )
+    eval_loader = DataLoader(
+        eval_dataset,
+        batch_size=config.dataloader.test_batch_size,
+        shuffle=False,
+        num_workers=config.dataloader.num_workers,
+        collate_fn=PaddingCollateFn(),
+    )
+
+    return train_loader, eval_loader
+
+
+def create_model(config, item_count):
+
+    if hasattr(config.dataset, "num_negatives") and config.dataset.num_negatives:
+        add_head = False
+    else:
+        add_head = True
+
+    if config.model == "SASRec":
+        model = SASRec(item_num=item_count, add_head=add_head, **config.model_params)
+
+    return model
+
+
+def training(model, train_loader, eval_loader, config):
+
+    if hasattr(config.dataset, "num_negatives") and config.dataset.num_negatives:
+        seqrec_module = SeqRecWithSampling(model, **config["seqrec_module"])
+    else:
+        seqrec_module = SeqRec(model, **config["seqrec_module"])
+
+    early_stopping = EarlyStopping(
+        monitor="val_ndcg", mode="max", patience=config.patience, verbose=False
+    )
+    model_summary = ModelSummary(max_depth=4)
+    checkpoint = ModelCheckpoint(
+        save_top_k=1, monitor="val_ndcg", mode="max", save_weights_only=True
+    )
+    progress_bar = TQDMProgressBar(refresh_rate=100)
+    callbacks = [early_stopping, model_summary, checkpoint, progress_bar]
+
+    trainer = pl.Trainer(
+        callbacks=callbacks,
+        devices=1,
+        accelerator="gpu",
+        enable_checkpointing=True,
+        **config["trainer_params"],
+    )
+
+    trainer.fit(
+        model=seqrec_module, train_dataloaders=train_loader, val_dataloaders=eval_loader
+    )
+
+    seqrec_module.load_state_dict(torch.load(checkpoint.best_model_path)["state_dict"])
+
+    return trainer, seqrec_module
+
+
+def predict(trainer, seqrec_module, data, config):
+
+    if config.model in ["SASRec", "GPT4Rec", "RNN"]:
+        predict_dataset = CausalLMPredictionDataset(
+            data, max_length=config.dataset.max_length
+        )
+
+    predict_loader = DataLoader(
+        predict_dataset,
+        shuffle=False,
+        collate_fn=PaddingCollateFn(),
+        batch_size=config.dataloader.test_batch_size,
+        num_workers=config.dataloader.num_workers,
+    )
+
+    seqrec_module.predict_top_k = max(config.top_k_metrics)
+    preds = trainer.predict(model=seqrec_module, dataloaders=predict_loader)
+
+    recs = preds2recs(preds)
+    print("recs shape", recs.shape)
+
+    return recs, predict_dataset
+
+
+def evaluate(recs, test, train, seqrec_module, dataset, task, config, prefix="test"):
+
+    all_metrics = {}
+    for k in config.top_k_metrics:
+        metrics = compute_metrics(test, recs, k=k)
+        metrics = {prefix + "_" + key: value for key, value in metrics.items()}
+        print(metrics)
+        all_metrics.update(metrics)
+
+    if config.sampled_metrics:
+        item_counts = train.item_id.value_counts()
+
+        uniform_metrics = compute_sampled_metrics(
+            seqrec_module,
+            dataset,
+            test,
+            item_counts,
+            popularity_sampling=False,
+            num_negatives=100,
+            k=10,
+        )
+        uniform_metrics = {
+            prefix + "_" + key + "_uniform": value
+            for key, value in uniform_metrics.items()
+        }
+        print(uniform_metrics)
+
+        popularity_metrics = compute_sampled_metrics(
+            seqrec_module, dataset, test, item_counts, num_negatives=100, k=10
+        )
+        popularity_metrics = {
+            prefix + "_" + key + "_popularity": value
+            for key, value in popularity_metrics.items()
+        }
+        print(popularity_metrics)
+
+    if task:
+
+        clearml_logger = task.get_logger()
+
+        for key, value in all_metrics.items():
+            clearml_logger.report_single_value(key, value)
+        if config.sampled_metrics:
+            for key, value in uniform_metrics.items():
+                clearml_logger.report_single_value(key, value)
+            for key, value in popularity_metrics.items():
+                clearml_logger.report_single_value(key, value)
+
+        if config.sampled_metrics:
+            all_metrics.update(uniform_metrics)
+            all_metrics.update(popularity_metrics)
+        all_metrics = pd.Series(all_metrics).to_frame().reset_index()
+        all_metrics.columns = ["metric_name", "metric_value"]
+
+        clearml_logger.report_table(
+            title=f"{prefix}_metrics", series="dataframe", table_plot=all_metrics
+        )
+        task.upload_artifact(f"{prefix}_metrics", all_metrics)
+
+
+def save_recommendations_to_csv(recs, file_name):
+    """
+    추천 결과를 CSV 파일로 저장하는 함수.
+    Args:
+        recs (pd.DataFrame): 추천 결과를 담은 DataFrame.
+        file_name (str): 저장할 CSV 파일 이름.
+    """
+    recs.to_csv(file_name, index=False)
+    print(f"추천 결과가 {file_name} 파일로 저장되었습니다.")
 
 
 if __name__ == "__main__":
-    config = get_config()
-    data_path = config["data_path"]
-    (train_df, val_df), mappings = load_data(data_path)
-    # 모델 크기 계산
-    num_users = len(mappings[0])
-    num_items = len(mappings[2])
-    model_name = config["model"]
-    model = getattr(models, model_name)(num_users, num_items, config[model_name])
-    criterion = getattr(nn, config["loss"])()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
 
-    trainer = Trainer(
-        model, criterion, optimizer, train_df, val_df, num_users, num_items, config
-    )
-    trainer.train(config["epochs"])
-    # trainer.validate()
-    mlflow.end_run()
+    main()
+
+
+# if __name__ == "__main__":
+#     config = get_config()
+#     data_path = config["data_path"]
+#     (train_df, val_df), mappings = load_data(data_path)
+#     # 모델 크기 계산
+#     num_users = len(mappings[0])
+#     num_items = len(mappings[2])
+#     model_name = config["model"]
+#     model = getattr(models, model_name)(num_users, num_items, config[model_name])
+#     criterion = getattr(nn, config["loss"])()
+#     optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
+
+#     trainer = Trainer(
+#         model, criterion, optimizer, train_df, val_df, num_users, num_items, config
+#     )
+#     trainer.train(config["epochs"])
+#     # trainer.validate()
+#     mlflow.end_run()

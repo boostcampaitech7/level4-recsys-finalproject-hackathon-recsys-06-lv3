@@ -13,9 +13,9 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         self,
         dataset: str,
         data_path: str,
-        export_path: str,
+        # export_path: str,
     ):
-        super().__init__(dataset, data_path, export_path)
+        super().__init__(dataset, data_path)
         self.data = {
             "items": pd.read_csv(os.path.join(data_path, "movies.csv")),
             "ratings": pd.read_csv(os.path.join(data_path, "ratings.csv")),
@@ -33,7 +33,7 @@ class MovieLensPreProcessor(AbstractPreProcessor):
 
         return user_interactions
 
-    def _pre_process(self) -> None:
+    def pre_process(self) -> None:
         items = self.data["items"]
         ratings = self.data["ratings"]
 
@@ -54,7 +54,7 @@ class MovieLensPreProcessor(AbstractPreProcessor):
 
         # 유저 리뷰 수 기준 이상치 제거 및 train-test split
         ratings = self._filter_users_with_interactions(ratings)
-        train, valid, test = self._split_train_valid_test(ratings)
+        return self._split_train_valid_test(ratings)
 
         # 영화 일정 리뷰 수 이하 제거 (추후 구현 필요)
 
@@ -161,44 +161,62 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         return filtered_ratings
 
     def _split_train_valid_test(
-        self, ratings
-    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        train_list, valid_list, test_list = [], [], []
+        self, ratings, sort=True
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
 
-        # user_id 기준 그룹화
-        grouped = ratings.groupby("user_id", group_keys=False)
+        # ratings 정렬 & time_idx 추가
+        if sort:
+            ratings = ratings.sort_values(["user_id", "timestamp"])
 
-        for _, group in tqdm(grouped, desc="Splitting train/valid/test"):
-            # positive,negative 상호작용 분리
-            pos_mask = group["interaction"] == 1
-            pos_interactions = group[pos_mask]
-
-            # 상위 2개 timestamp 추출
-            top2 = pos_interactions.nlargest(2, "timestamp")
-
-            # Test/Valid 분리
-            test_data = top2.iloc[[0]] if len(top2) >= 1 else None  # 최신 1개
-            valid_data = top2.iloc[[1]] if len(top2) >= 2 else None  # 차순위 1개
-
-            # Train 데이터 구성
-            ## 남은 positive: 전체 positive에서 top2 제외
-            train_data = pos_interactions.drop(top2.index, errors="ignore")
-
-            # 데이터 추가
-            if test_data is not None:
-                test_list.append(test_data)
-            if valid_data is not None:
-                valid_list.append(valid_data)
-            if not train_data.empty:
-                train_list.append(train_data)
-
-        # DataFrame 병합
-        train = (
-            pd.concat(train_list, ignore_index=True) if train_list else pd.DataFrame()
+        ratings["time_idx"] = ratings.groupby("user_id").cumcount()
+        ratings["time_idx_reversed"] = ratings.groupby("user_id").cumcount(
+            ascending=False
         )
-        valid = (
-            pd.concat(valid_list, ignore_index=True) if valid_list else pd.DataFrame()
-        )
-        test = pd.concat(test_list, ignore_index=True) if test_list else pd.DataFrame()
 
-        return train, valid, test
+        # train, valid, test 데이터 분리
+        train = ratings[ratings.time_idx_reversed >= 2]
+        valid = ratings[ratings.time_idx_reversed == 1]
+        valid_full = ratings[ratings.time_idx_reversed >= 1]
+        test = ratings[ratings.time_idx_reversed == 0]
+
+        item_count = ratings["item_id"].nunique()
+
+        # train_list, valid_list, test_list = [], [], []
+
+        # # user_id 기준 그룹화
+        # grouped = ratings.groupby("user_id", group_keys=False)
+
+        # for _, group in tqdm(grouped, desc="Splitting train/valid/test"):
+        #     # positive,negative 상호작용 분리
+        #     pos_mask = group["interaction"] == 1
+        #     pos_interactions = group[pos_mask]
+
+        #     # 상위 2개 timestamp 추출
+        #     top2 = pos_interactions.nlargest(2, "timestamp")
+
+        #     # Test/Valid 분리
+        #     test_data = top2.iloc[[0]] if len(top2) >= 1 else None  # 최신 1개
+        #     valid_data = top2.iloc[[1]] if len(top2) >= 2 else None  # 차순위 1개
+
+        #     # Train 데이터 구성
+        #     ## 남은 positive: 전체 positive에서 top2 제외
+        #     train_data = pos_interactions.drop(top2.index, errors="ignore")
+
+        #     # 데이터 추가
+        #     if test_data is not None:
+        #         test_list.append(test_data)
+        #     if valid_data is not None:
+        #         valid_list.append(valid_data)
+        #     if not train_data.empty:
+        #         train_list.append(train_data)
+
+        # # DataFrame 병합
+        # train = (
+        #     pd.concat(train_list, ignore_index=True) if train_list else pd.DataFrame()
+        # )
+        # valid = (
+        #     pd.concat(valid_list, ignore_index=True) if valid_list else pd.DataFrame()
+        # )
+        # test = pd.concat(test_list, ignore_index=True) if test_list else pd.DataFrame()
+
+        return train, valid, valid_full, test, item_count

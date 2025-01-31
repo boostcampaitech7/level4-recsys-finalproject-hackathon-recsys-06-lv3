@@ -1,18 +1,40 @@
-model : 'NCF'
-# 경로 설정
-data_path: "./data/rating_complete.csv"
+cuda_visible_devices: 0
 
-# 모델 파라미터
-learning_rate : 0.001
-batch_size : 1024
-epochs : 1
-loss: "MSELoss"
+model : SASRec
+data_path: "./data"
+
+dataset:
+  max_length: 50
+  # num_negatives:
+  full_negative_sampling: False
+
+dataloader:
+  batch_size: 128
+  test_batch_size: 256
+  num_workers: 8
+  validation_size: 10000
+
+seqrec_module:
+  lr: 0.001
+  predict_top_k: 10
+  filter_seen: True
+  # loss: bce
 
 NCF:
   factor_num: 3
   num_layers: 2
   dropout: 0.2
   embedding_size : 128
+SASRec:
+  maxlen: 200
+  hidden_units: 64
+  num_blocks: 2
+  num_heads: 1
+  dropout_rate: 0.1
+
+patience: 10
+sampled_metrics: False
+top_k_metrics: [10, 100]
   
 mlflow:
   tracking_uri: server:port
