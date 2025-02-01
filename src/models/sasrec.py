@@ -4,9 +4,6 @@ from torch import nn
 
 
 class SASRec(nn.Module):
-    """Adaptation of code from
-    https://github.com/pmixer/SASRec.pytorch.
-    """
 
     def __init__(
         self,
