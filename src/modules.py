@@ -2,6 +2,7 @@
 Pytorch Lightning Modules.
 """
 
+import mlflow
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -21,6 +22,7 @@ class SeqRecBase(pl.LightningModule):
         self.padding_idx = padding_idx
         self.predict_top_k = predict_top_k
         self.filter_seen = filter_seen
+        self.validation_step_outputs = {"ndcg": [], "hit_rate": [], "mrr": []}
 
     def configure_optimizers(self):
 
@@ -45,6 +47,10 @@ class SeqRecBase(pl.LightningModule):
         self.log("val_ndcg", metrics["ndcg"], prog_bar=True)
         self.log("val_hit_rate", metrics["hit_rate"], prog_bar=True)
         self.log("val_mrr", metrics["mrr"], prog_bar=True)
+
+        self.validation_step_outputs["ndcg"].append(metrics["ndcg"])
+        self.validation_step_outputs["hit_rate"].append(metrics["hit_rate"])
+        self.validation_step_outputs["mrr"].append(metrics["mrr"])
 
     def make_prediction(self, batch):
 
@@ -105,13 +111,26 @@ class SeqRecBase(pl.LightningModule):
 
         return {"ndcg": ndcg, "hit_rate": hit_rate, "mrr": mrr}
 
+    def on_validation_epoch_end(self):
+        avg_metrics = {k: np.mean(v) for k, v in self.validation_step_outputs.items()}
+        mlflow.log_metrics(avg_metrics, step=self.current_epoch)
+        self.validation_step_outputs = {"ndcg": [], "hit_rate": [], "mrr": []}
+
 
 class SeqRec(SeqRecBase):
+
+    def __init__(
+        self, model, lr=1e-3, padding_idx=0, predict_top_k=10, filter_seen=True
+    ):
+        super().__init__(model, lr, padding_idx, predict_top_k, filter_seen)
+        self.training_step_outputs = []
 
     def training_step(self, batch, batch_idx):
 
         outputs = self.model(batch["input_ids"], batch["attention_mask"])
         loss = self.compute_loss(outputs, batch)
+
+        self.training_step_outputs.append(loss.item())
 
         return loss
 
@@ -125,6 +144,11 @@ class SeqRec(SeqRecBase):
     def prediction_output(self, batch):
 
         return self.model(batch["input_ids"], batch["attention_mask"])
+
+    def on_train_epoch_end(self):
+        avg_loss = np.mean(self.training_step_outputs)
+        mlflow.log_metric("train_loss", avg_loss, step=self.current_epoch)
+        self.training_step_outputs.clear()
 
 
 class SeqRecWithSampling(SeqRec):

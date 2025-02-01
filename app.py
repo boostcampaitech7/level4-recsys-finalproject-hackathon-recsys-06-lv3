@@ -4,8 +4,13 @@ Run experiment.
 
 import os
 import time
+from datetime import datetime
 
 import hydra
+import mlflow
+import mlflow.data.dataset_registry
+import mlflow.data.dataset_source
+import mlflow.data.pandas_dataset
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
@@ -48,6 +53,8 @@ def main(config):
     save_recommendations_to_csv(test, "test_set.csv")
     print("전처리 완료")
 
+    mlflow_init(config, train, valid, test)
+
     train_loader, eval_loader = create_dataloaders(train, valid_full, config)
     model = create_model(config, item_count=item_count)
     start_time = time.time()
@@ -76,6 +83,18 @@ def main(config):
     if task is not None:
         task.get_logger().report_single_value("training_time", training_time)
         task.close()
+
+    mlflow.end_run()
+
+
+def mlflow_init(config, train, valid, test):
+    mlflow.set_tracking_uri(config.mlflow.tracking_uri)
+    run_name = f"{config['model']}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    mlflow.start_run(run_name=run_name, log_system_metrics=True)
+    mlflow.log_params(config)
+    mlflow.data.pandas_dataset.from_pandas(train, name="train_df")
+    mlflow.data.pandas_dataset.from_pandas(valid, name="valid_df")
+    mlflow.data.pandas_dataset.from_pandas(test, name="test_df")
 
 
 def create_dataloaders(train, valid, config):
@@ -145,6 +164,7 @@ def training(model, train_loader, eval_loader, config):
         accelerator="gpu",
         enable_checkpointing=True,
         max_epochs=config.epochs,
+        num_sanity_val_steps=0,
     )
 
     trainer.fit(
@@ -188,6 +208,7 @@ def evaluate(recs, test, train, seqrec_module, dataset, task, config, prefix="te
         metrics = {prefix + "_" + key: value for key, value in metrics.items()}
         print(metrics)
         all_metrics.update(metrics)
+        mlflow.log_metrics(metrics)
 
     if config.sampled_metrics:
         item_counts = train.item_id.value_counts()

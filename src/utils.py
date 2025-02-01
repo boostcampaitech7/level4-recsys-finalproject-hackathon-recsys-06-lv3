@@ -29,7 +29,7 @@ def compute_metrics(ground_truth, preds, k=10):
 
     # when we have 1 true positive, HitRate == Recall and MRR == MAP
     metrics = {
-        f"ndcg@{k}": ndcg_at_k(
+        f"ndcg_at_{k}": ndcg_at_k(
             ground_truth,
             preds,
             col_user="user_id",
@@ -38,7 +38,7 @@ def compute_metrics(ground_truth, preds, k=10):
             col_rating="rating",
             k=k,
         ),
-        f"hit_rate@{k}": recall_at_k(
+        f"hit_rate_at_{k}": recall_at_k(
             ground_truth,
             preds,
             col_user="user_id",
@@ -47,7 +47,7 @@ def compute_metrics(ground_truth, preds, k=10):
             col_rating="rating",
             k=k,
         ),
-        f"mrr@{k}": map_at_k(
+        f"mrr_at_{k}": map_at_k(
             ground_truth,
             preds,
             col_user="user_id",
