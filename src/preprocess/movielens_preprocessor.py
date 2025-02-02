@@ -71,16 +71,6 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         # train-valid-test split
         return self._split_train_valid_test(ratings)
 
-        # 영화 일정 리뷰 수 이하 제거 (추후 구현 필요)
-
-        # export_dfs에 전처리된 데이터 저장
-        self.export_dfs = {
-            "items": items,
-            "train": train,
-            "valid": valid,
-            "test": test,
-        }
-
     def _preprocess_genres(self, items: pd.DataFrame) -> pd.DataFrame:
         """
         추후 장르 원핫인코딩 or 멀티 인코딩 코드 상의 후 작성
@@ -195,43 +185,5 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         test = ratings[ratings.time_idx_reversed == 0]
 
         item_count = ratings["item_id"].nunique()
-
-        # train_list, valid_list, test_list = [], [], []
-
-        # # user_id 기준 그룹화
-        # grouped = ratings.groupby("user_id", group_keys=False)
-
-        # for _, group in tqdm(grouped, desc="Splitting train/valid/test"):
-        #     # positive,negative 상호작용 분리
-        #     pos_mask = group["interaction"] == 1
-        #     pos_interactions = group[pos_mask]
-
-        #     # 상위 2개 timestamp 추출
-        #     top2 = pos_interactions.nlargest(2, "timestamp")
-
-        #     # Test/Valid 분리
-        #     test_data = top2.iloc[[0]] if len(top2) >= 1 else None  # 최신 1개
-        #     valid_data = top2.iloc[[1]] if len(top2) >= 2 else None  # 차순위 1개
-
-        #     # Train 데이터 구성
-        #     ## 남은 positive: 전체 positive에서 top2 제외
-        #     train_data = pos_interactions.drop(top2.index, errors="ignore")
-
-        #     # 데이터 추가
-        #     if test_data is not None:
-        #         test_list.append(test_data)
-        #     if valid_data is not None:
-        #         valid_list.append(valid_data)
-        #     if not train_data.empty:
-        #         train_list.append(train_data)
-
-        # # DataFrame 병합
-        # train = (
-        #     pd.concat(train_list, ignore_index=True) if train_list else pd.DataFrame()
-        # )
-        # valid = (
-        #     pd.concat(valid_list, ignore_index=True) if valid_list else pd.DataFrame()
-        # )
-        # test = pd.concat(test_list, ignore_index=True) if test_list else pd.DataFrame()
 
         return train, valid, valid_full, test, item_count
