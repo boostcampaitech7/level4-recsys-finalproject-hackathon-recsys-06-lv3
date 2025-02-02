@@ -71,17 +71,7 @@ class SASRec(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
-    # parameter attention mask added for compatibility with Lightning module, not used
-    def forward(self, input_ids, attention_mask):
-
-        seqs = self.item_emb(input_ids)
-        seqs *= self.item_emb.embedding_dim**0.5
-        positions = np.tile(
-            np.array(range(input_ids.shape[1])), [input_ids.shape[0], 1]
-        )
-        # need to be on the same device
-        seqs += self.pos_emb(torch.LongTensor(positions).to(seqs.device))
-        seqs = self.emb_dropout(seqs)
+    def _calculate_attention_mask(self, input_ids):
 
         timeline_mask = torch.Tensor(input_ids == 0)
         seqs *= ~timeline_mask.unsqueeze(-1)  # broadcast in last dim
@@ -110,6 +100,21 @@ class SASRec(nn.Module):
         outputs = self.last_layernorm(seqs)  # (U, T, C) -> (U, -1, C)
         if self.add_head:
             outputs = torch.matmul(outputs, self.item_emb.weight.transpose(0, 1))
+        return outputs
+
+    # parameter attention mask added for compatibility with Lightning module, not used
+    def forward(self, input_ids, attention_mask):
+
+        seqs = self.item_emb(input_ids)
+        seqs *= self.item_emb.embedding_dim**0.5
+        positions = np.tile(
+            np.array(range(input_ids.shape[1])), [input_ids.shape[0], 1]
+        )
+        # need to be on the same device
+        seqs += self.pos_emb(torch.LongTensor(positions).to(seqs.device))
+        seqs = self.emb_dropout(seqs)
+
+        outputs = self._calculate_attention_mask(seqs)
 
         return outputs
 
