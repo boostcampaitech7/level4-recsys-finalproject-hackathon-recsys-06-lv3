@@ -161,11 +161,20 @@ class SeqRecWithSampling(SeqRec):
         padding_idx=0,
         predict_top_k=10,
         filter_seen=True,
+        lambda_value=0.5,
+        similarity_threshold=0.9,
+        similarity_matrix=None,
+        similarity_score=None,
     ):
 
         super().__init__(model, lr, padding_idx, predict_top_k, filter_seen)
 
         self.loss = loss
+        if self.loss == "sim_rec":
+            self.lambda_value = lambda_value
+            self.similarity_threshold = similarity_threshold
+            self.sim_matrix = torch.load(similarity_matrix, map_location="cuda")
+            self.sim_score = torch.load(similarity_score, map_location="cuda")
 
         if hasattr(self.model, "item_emb"):  # for SASRec
             self.embed_layer = self.model.item_emb
@@ -226,6 +235,17 @@ class SeqRecWithSampling(SeqRec):
             loss = loss[batch["labels"] != -100]
             loss = loss.mean()
 
+        if self.loss == "sim_rec":
+            targets = torch.zeros_like(logits)
+            targets[:, :, 0] = 1
+            bce_fct = nn.BCEWithLogitsLoss(reduction="none")
+            bce_loss = bce_fct(logits, targets)
+            bce_loss = bce_loss[batch["labels"] != -100]
+            bce_loss = bce_loss.mean()
+            sim_loss = -torch.sum(
+                self.sim_matrix * torch.log(self.sim_score + 1e-10)
+            )  # Prevent log(0)
+            loss = (1 - self.lambda_value) * bce_loss + self.lambda_value * sim_loss
         return loss
 
     def prediction_output(self, batch):
@@ -234,3 +254,12 @@ class SeqRecWithSampling(SeqRec):
         outputs = torch.matmul(outputs, self.embed_layer.weight.T)
 
         return outputs
+
+    def _init_sim_rec(self):
+        self.sim_matrix = torch.zeros(
+            self.embed_layer.num_embeddings, self.embed_layer.embedding_dim
+        )
+        self.sim_score = torch.zeros(
+            self.embed_layer.num_embeddings, self.embed_layer.embedding_dim
+        )
+        self.lambda_value = 0.5

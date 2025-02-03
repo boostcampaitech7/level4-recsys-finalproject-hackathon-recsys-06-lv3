@@ -13,3 +13,5 @@ jupyter
 pynvml
 tqdm
 boto3
+transformers
+sentence-transformers
