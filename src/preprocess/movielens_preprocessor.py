@@ -11,11 +11,11 @@ from .abstract_preprocessor import AbstractPreProcessor
 class MovieLensPreProcessor(AbstractPreProcessor):
     def __init__(
         self,
-        # dataset: str,
+        dataset: str,
         data_path: str,
-        # export_path: str,
+        export_path: str,
     ):
-        super().__init__(None, data_path, None)
+        super().__init__(dataset, data_path, export_path)
         self.data = {
             "items": pd.read_csv(os.path.join(data_path, "movies.csv")),
             "ratings": pd.read_csv(os.path.join(data_path, "ratings.csv")),
@@ -68,8 +68,20 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         self.id2user = {v: k for k, v in user2id.items()}
         self.id2item = {v: k for k, v in item2id.items()}
 
-        # train-valid-test split
-        return self._split_train_valid_test(ratings)
+        train, valid, valid_full, test, item_count = self._split_train_valid_test(
+            ratings
+        )
+
+        self.item_count = item_count
+
+        # export_dfs에 전처리된 데이터 저장
+        self.export_dfs = {
+            "items": items,
+            "train": train,
+            "valid": valid,
+            "valid_full": valid_full,
+            "test": test,
+        }
 
     def _preprocess_genres(self, items: pd.DataFrame) -> pd.DataFrame:
         """
@@ -128,50 +140,29 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         """
         사용자별 상호작용 데이터를 필터링하고 interaction 컬럼을 생성
         """
-        # IQR 우선 계산
-        user_rating_counts = (
-            ratings.groupby("user_id").size().reset_index(name="rating_count")
-        )
-
-        Q1 = user_rating_counts["rating_count"].quantile(0.25)
-        Q3 = user_rating_counts["rating_count"].quantile(0.75)
-        IQR = Q3 - Q1
-        upper_fence = Q3 + 1.5 * IQR
-
-        # 4.0 이상 평점이 2개 이하인 유저 필터링 (valid와 test, train에 하나씩 필요)
-        user_high_ratings = (
-            ratings[ratings["rating"] >= 4.0]
-            .groupby("user_id")
-            .size()
-            .reset_index(name="high_rating_count")
-        )
-        valid_users = user_high_ratings[user_high_ratings["high_rating_count"] > 2][
+        # 2000년 이후 마지막 상호작용이 있는 유저 필터링
+        last_timestamps = ratings.groupby("user_id")["timestamp"].max().reset_index()
+        users_to_keep = last_timestamps[last_timestamps["timestamp"] >= 946684800][
             "user_id"
         ]
-        filtered_ratings = ratings[ratings["user_id"].isin(valid_users)].copy()
+        ratings = ratings[ratings["user_id"].isin(users_to_keep)]
 
-        # IQR 기반 이상치 제거
-        valid_users = user_rating_counts[
-            user_rating_counts["rating_count"] <= upper_fence
-        ]["user_id"]
-        filtered_ratings = filtered_ratings[
-            filtered_ratings["user_id"].isin(valid_users)
+        # 평점이 4.0 이상인 데이터만 사용
+        ratings = ratings[ratings["rating"] >= 4.0]
+
+        # 최소 3개 이상의 상호작용이 있는 유저 필터링
+        user_counts = ratings.groupby("user_id").size().reset_index(name="count")
+        ratings = ratings[
+            ratings["user_id"].isin(user_counts[user_counts["count"] > 2]["user_id"])
         ]
-
-        # interaction 컬럼 생성
-        filtered_ratings.loc[:, "interaction"] = (
-            filtered_ratings["rating"] >= 4.0
-        ).astype(int)
-
-        return filtered_ratings
+        return ratings
 
     def _split_train_valid_test(
-        self, ratings, sort=True
+        self, ratings
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
 
         # ratings 정렬 & time_idx 추가
-        if sort:
-            ratings = ratings.sort_values(["user_id", "timestamp"])
+        ratings = ratings.sort_values(["user_id", "timestamp"])
 
         ratings["time_idx"] = ratings.groupby("user_id").cumcount()
         ratings["time_idx_reversed"] = ratings.groupby("user_id").cumcount(

@@ -17,12 +17,19 @@ import pytorch_lightning as pl
 import torch
 from clearml import Task
 from omegaconf import OmegaConf
-from pytorch_lightning.callbacks import (EarlyStopping, ModelCheckpoint,
-                                         ModelSummary, TQDMProgressBar)
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    ModelCheckpoint,
+    ModelSummary,
+    TQDMProgressBar,
+)
 from torch.utils.data import DataLoader
 
-from src.data.dataset import (CausalLMDataset, CausalLMPredictionDataset,
-                              PaddingCollateFn)
+from src.data.dataset import (
+    CausalLMDataset,
+    CausalLMPredictionDataset,
+    PaddingCollateFn,
+)
 from src.models import SASRec
 from src.modules import SeqRec, SeqRecWithSampling
 from src.preprocess import MovieLensPreProcessor
@@ -48,9 +55,11 @@ def main(config):
         task = None
 
     print("전처리 중...")
-    preprocessor = MovieLensPreProcessor(config.data_path)
-    train, valid, valid_full, test, item_count = preprocessor._pre_process()
-    save_recommendations_to_csv(test, "test_set.csv")
+    preprocessor = MovieLensPreProcessor(
+        "MovieLens_20m", config.data_path, config.export_path
+    )
+    items, train, valid, valid_full, test = preprocessor.get_data()
+    item_count = preprocessor.item_count
     print("전처리 완료")
 
     mlflow_init(config, train, valid, test)

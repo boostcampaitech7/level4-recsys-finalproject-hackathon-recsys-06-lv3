@@ -17,17 +17,21 @@ class AbstractPreProcessor(ABC):
 
     def get_data(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
-        전처리된 데이터를 로드하거나 전처리 후 저장하는 메서드.
+        전처리된 데이터를 전처리 후 저장하는 메서드.
         """
         required_files = {
             "items": os.path.join(self.export_path, self.dataset, "items.csv"),
             "train": os.path.join(self.export_path, self.dataset, "train.csv"),
             "valid": os.path.join(self.export_path, self.dataset, "valid.csv"),
+            "valid_full": os.path.join(
+                self.export_path, self.dataset, "valid_full.csv"
+            ),
             "test": os.path.join(self.export_path, self.dataset, "test.csv"),
         }
 
-        if all(os.path.exists(f) for f in required_files.values()):
-            return self._load_data(required_files)
+        # item_count 계산 문제로 인해 load 과정 생략. 매번 전처리 후 저장
+        # if all(os.path.exists(f) for f in required_files.values()):
+        #     return self._load_data(required_files)
         return self._process_data()
 
     def _load_data(
@@ -41,8 +45,9 @@ class AbstractPreProcessor(ABC):
             items = pd.read_csv(required_files["items"])
             train = pd.read_csv(required_files["train"])
             valid = pd.read_csv(required_files["valid"])
+            valid_full = pd.read_csv(required_files["valid_full"])
             test = pd.read_csv(required_files["test"])
-            return items, train, valid, test
+            return items, train, valid, valid_full, test
         except Exception as e:
             print(f"Error loading files: {e}")
             raise
@@ -60,12 +65,13 @@ class AbstractPreProcessor(ABC):
         items = self.export_dfs.get("items")
         train = self.export_dfs.get("train")
         valid = self.export_dfs.get("valid")
+        valid_full = self.export_dfs.get("valid_full")
         test = self.export_dfs.get("test")
 
         if any(df is None for df in [items, train, valid, test]):
             raise ValueError("Missing required DataFrame after preprocessing")
 
-        return items, train, valid, test
+        return items, train, valid, valid_full, test
 
     def _save_data(self) -> None:
         """
