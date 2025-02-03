@@ -123,6 +123,7 @@ def create_dataloaders(train, valid, config):
         shuffle=True,
         num_workers=config.dataloader.num_workers,
         collate_fn=PaddingCollateFn(),
+        persistent_workers=True,
     )
     eval_loader = DataLoader(
         eval_dataset,
@@ -130,6 +131,7 @@ def create_dataloaders(train, valid, config):
         shuffle=False,
         num_workers=config.dataloader.num_workers,
         collate_fn=PaddingCollateFn(),
+        persistent_workers=True,
     )
 
     return train_loader, eval_loader
@@ -205,6 +207,7 @@ def predict(trainer, seqrec_module, data, config):
 
 
 def evaluate(recs, test, train, seqrec_module, dataset, task, config, prefix="test"):
+
     all_metrics = {}
     for k in config.top_k_metrics:
         metrics = compute_metrics(test, recs, k=k)
