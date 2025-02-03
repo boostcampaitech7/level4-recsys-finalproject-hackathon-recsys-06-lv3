@@ -10,11 +10,9 @@ from torch import nn
 
 
 class SeqRecBase(pl.LightningModule):
-
     def __init__(
         self, model, lr=1e-3, padding_idx=0, predict_top_k=10, filter_seen=True
     ):
-
         super().__init__()
 
         self.model = model
@@ -25,12 +23,10 @@ class SeqRecBase(pl.LightningModule):
         self.validation_step_outputs = {"ndcg": [], "hit_rate": [], "mrr": []}
 
     def configure_optimizers(self):
-
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
     def predict_step(self, batch, batch_idx):
-
         preds, scores = self.make_prediction(batch)
 
         scores = scores.detach().cpu().numpy()
@@ -40,7 +36,6 @@ class SeqRecBase(pl.LightningModule):
         return {"preds": preds, "scores": scores, "user_ids": user_ids}
 
     def validation_step(self, batch, batch_idx):
-
         preds, scores = self.make_prediction(batch)
         metrics = self.compute_val_metrics(batch["target"], preds)
 
@@ -53,7 +48,6 @@ class SeqRecBase(pl.LightningModule):
         self.validation_step_outputs["mrr"].append(metrics["mrr"])
 
     def make_prediction(self, batch):
-
         outputs = self.prediction_output(batch)
 
         input_ids = batch["input_ids"]
@@ -76,7 +70,6 @@ class SeqRecBase(pl.LightningModule):
         return preds, scores
 
     def filter_seen_items(self, preds, scores, seen_items):
-
         max_len = seen_items.size(1)
         scores = scores[:, : self.predict_top_k + max_len]
         preds = preds[:, : self.predict_top_k + max_len]
@@ -95,7 +88,6 @@ class SeqRecBase(pl.LightningModule):
         return final_preds, final_scores
 
     def compute_val_metrics(self, targets, preds):
-
         ndcg, hit_rate, mrr = 0, 0, 0
 
         for i, pred in enumerate(preds):
@@ -118,7 +110,6 @@ class SeqRecBase(pl.LightningModule):
 
 
 class SeqRec(SeqRecBase):
-
     def __init__(
         self, model, lr=1e-3, padding_idx=0, predict_top_k=10, filter_seen=True
     ):
@@ -126,7 +117,6 @@ class SeqRec(SeqRecBase):
         self.training_step_outputs = []
 
     def training_step(self, batch, batch_idx):
-
         outputs = self.model(batch["input_ids"], batch["attention_mask"])
         loss = self.compute_loss(outputs, batch)
 
@@ -135,14 +125,12 @@ class SeqRec(SeqRecBase):
         return loss
 
     def compute_loss(self, outputs, batch):
-
         loss_fct = nn.CrossEntropyLoss()
         loss = loss_fct(outputs.view(-1, outputs.size(-1)), batch["labels"].view(-1))
 
         return loss
 
     def prediction_output(self, batch):
-
         return self.model(batch["input_ids"], batch["attention_mask"])
 
     def on_train_epoch_end(self):
@@ -152,7 +140,6 @@ class SeqRec(SeqRecBase):
 
 
 class SeqRecWithSampling(SeqRec):
-
     def __init__(
         self,
         model,
@@ -166,7 +153,6 @@ class SeqRecWithSampling(SeqRec):
         similarity_matrix=None,
         similarity_score=None,
     ):
-
         super().__init__(model, lr, padding_idx, predict_top_k, filter_seen)
 
         self.loss = loss
@@ -182,7 +168,6 @@ class SeqRecWithSampling(SeqRec):
             self.embed_layer = self.model.embed_layer
 
     def compute_loss(self, outputs, batch):
-
         # embed  and compute logits for negatives
         if batch["negatives"].ndim == 2:  # for full_negative_sampling=False
             # [N, M, D]
@@ -249,7 +234,6 @@ class SeqRecWithSampling(SeqRec):
         return loss
 
     def prediction_output(self, batch):
-
         outputs = self.model(batch["input_ids"], batch["attention_mask"])
         outputs = torch.matmul(outputs, self.embed_layer.weight.T)
 

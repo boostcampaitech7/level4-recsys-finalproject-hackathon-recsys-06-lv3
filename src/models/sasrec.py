@@ -4,7 +4,6 @@ from torch import nn
 
 
 class SASRec(nn.Module):
-
     def __init__(
         self,
         item_num,
@@ -16,7 +15,6 @@ class SASRec(nn.Module):
         initializer_range=0.02,
         add_head=True,
     ):
-
         super(SASRec, self).__init__()
 
         self.item_num = item_num
@@ -58,7 +56,6 @@ class SASRec(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
-
         if isinstance(module, (nn.Linear, nn.Conv1d)):
             module.weight.data.normal_(mean=0.0, std=self.initializer_range)
             if module.bias is not None:
@@ -71,7 +68,16 @@ class SASRec(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
-    def _calculate_attention_mask(self, input_ids):
+    # parameter attention mask added for compatibility with Lightning module, not used
+    def forward(self, input_ids, attention_mask):
+        seqs = self.item_emb(input_ids)
+        seqs *= self.item_emb.embedding_dim**0.5
+        positions = np.tile(
+            np.array(range(input_ids.shape[1])), [input_ids.shape[0], 1]
+        )
+        # need to be on the same device
+        seqs += self.pos_emb(torch.LongTensor(positions).to(seqs.device))
+        seqs = self.emb_dropout(seqs)
 
         timeline_mask = torch.Tensor(input_ids == 0)
         seqs *= ~timeline_mask.unsqueeze(-1)  # broadcast in last dim
@@ -100,29 +106,12 @@ class SASRec(nn.Module):
         outputs = self.last_layernorm(seqs)  # (U, T, C) -> (U, -1, C)
         if self.add_head:
             outputs = torch.matmul(outputs, self.item_emb.weight.transpose(0, 1))
-        return outputs
-
-    # parameter attention mask added for compatibility with Lightning module, not used
-    def forward(self, input_ids, attention_mask):
-
-        seqs = self.item_emb(input_ids)
-        seqs *= self.item_emb.embedding_dim**0.5
-        positions = np.tile(
-            np.array(range(input_ids.shape[1])), [input_ids.shape[0], 1]
-        )
-        # need to be on the same device
-        seqs += self.pos_emb(torch.LongTensor(positions).to(seqs.device))
-        seqs = self.emb_dropout(seqs)
-
-        outputs = self._calculate_attention_mask(seqs)
 
         return outputs
 
 
 class PointWiseFeedForward(nn.Module):
-
     def __init__(self, hidden_units, dropout_rate):
-
         super(PointWiseFeedForward, self).__init__()
 
         self.conv1 = nn.Conv1d(hidden_units, hidden_units, kernel_size=1)

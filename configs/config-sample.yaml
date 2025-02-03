@@ -2,6 +2,7 @@ cuda_visible_devices: 0
 
 model : SASRec
 data_path: "./data"
+export_path: "./data/processed"
 
 dataset:
   max_length: 50
