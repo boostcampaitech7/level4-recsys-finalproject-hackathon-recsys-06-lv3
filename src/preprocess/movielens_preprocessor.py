@@ -141,10 +141,7 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         사용자별 상호작용 데이터를 필터링하고 interaction 컬럼을 생성
         """
         # 2000년 이후 마지막 상호작용이 있는 유저 필터링
-        last_timestamps = ratings.groupby("user_id")["timestamp"].max().reset_index()
-        users_to_keep = last_timestamps[last_timestamps["timestamp"] >= 946684800][
-            "user_id"
-        ]
+        users_to_keep = ratings[ratings["timestamp"] >= 946684800]["user_id"].unique()
         ratings = ratings[ratings["user_id"].isin(users_to_keep)]
 
         # 평점이 4.0 이상인 데이터만 사용
@@ -161,7 +158,7 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         self, ratings
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
         # ratings 정렬 & time_idx 추가
-        ratings = ratings.sort_values(["user_id", "timestamp"])
+        # ratings = ratings.sort_values(["user_id", "timestamp"])
 
         ratings["time_idx"] = ratings.groupby("user_id").cumcount()
         ratings["time_idx_reversed"] = ratings.groupby("user_id").cumcount(
@@ -174,6 +171,6 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         valid_full = ratings[ratings.time_idx_reversed >= 1]
         test = ratings[ratings.time_idx_reversed == 0]
 
-        item_count = ratings["item_id"].nunique()
+        item_count = ratings["item_id"].max()
 
         return train, valid, valid_full, test, item_count
