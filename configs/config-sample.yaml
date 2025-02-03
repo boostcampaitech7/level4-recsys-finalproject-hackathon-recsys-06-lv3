@@ -21,10 +21,10 @@ seqrec_module:
   filter_seen: True
   loss: sim_rec # bce, cross_entropy, sim_rec
   lambda_value: 0.5 # only for sim_rec
-  similaritiy_threshold: 0.9 # only for sim_rec
-  similarity_metric: "./save/models/ml-20m-similarity-indices-thenlper_gte-large.pt" # only for sim_rec
-  similarity_value: "./save/models/save/models/ml-20m-similarity-values-thenlper_gte-large.pt" # only for sim_rec
-
+  similarity_threshold: 0.9 # only for sim_rec
+  similarity_indicies: "./save/models/ml-20m-similarity-indices-thenlper_gte-large.pt" # only for sim_rec
+  similarity_value: "./save/models/ml-20m-similarity-values-thenlper_gte-large.pt" # only for sim_rec
+  temperature: 1 # only for sim_rec
 NCF:
   factor_num: 3
   num_layers: 2
