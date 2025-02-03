@@ -158,7 +158,7 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         self, ratings
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
         # ratings 정렬 & time_idx 추가
-        # ratings = ratings.sort_values(["user_id", "timestamp"])
+        ratings = ratings.sort_values(["user_id", "timestamp"])
 
         ratings["time_idx"] = ratings.groupby("user_id").cumcount()
         ratings["time_idx_reversed"] = ratings.groupby("user_id").cumcount(
