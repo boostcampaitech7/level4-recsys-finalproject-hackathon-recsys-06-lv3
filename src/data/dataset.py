@@ -9,7 +9,6 @@ from torch.utils.data import Dataset
 
 
 class LMDataset(Dataset):
-
     def __init__(
         self,
         df,
@@ -20,7 +19,6 @@ class LMDataset(Dataset):
         item_col="item_id",
         time_col="time_idx",
     ):
-
         self.max_length = max_length
         self.num_negatives = num_negatives
         self.full_negative_sampling = full_negative_sampling
@@ -37,11 +35,9 @@ class LMDataset(Dataset):
             self.all_items = df[item_col].unique()
 
     def __len__(self):
-
         return len(self.data)
 
     def sample_negatives(self, item_sequence):
-
         negatives = self.all_items[~np.isin(self.all_items, item_sequence)]
         if self.full_negative_sampling:
             negatives = np.random.choice(
@@ -59,7 +55,6 @@ class LMDataset(Dataset):
 
 
 class CausalLMDataset(LMDataset):
-
     def __init__(
         self,
         df,
@@ -71,7 +66,6 @@ class CausalLMDataset(LMDataset):
         time_col="time_idx",
         label_masking_probability=0,
     ):
-
         super().__init__(
             df,
             max_length,
@@ -85,7 +79,6 @@ class CausalLMDataset(LMDataset):
         self.label_masking_probability = label_masking_probability
 
     def __getitem__(self, idx):
-
         item_sequence = self.data[self.user_ids[idx]]
 
         if len(item_sequence) > self.max_length + 1:
@@ -106,7 +99,6 @@ class CausalLMDataset(LMDataset):
 
 
 class CausalLMPredictionDataset(LMDataset):
-
     def __init__(
         self,
         df,
@@ -116,7 +108,6 @@ class CausalLMPredictionDataset(LMDataset):
         item_col="item_id",
         time_col="time_idx",
     ):
-
         super().__init__(
             df,
             max_length=max_length,
@@ -129,7 +120,6 @@ class CausalLMPredictionDataset(LMDataset):
         self.valid_mode = valid_mode
 
     def __getitem__(self, idx):
-
         user_id = self.user_ids[idx]
         item_sequence = self.data[user_id]
 
@@ -155,18 +145,14 @@ class CausalLMPredictionDataset(LMDataset):
 
 
 class PaddingCollateFn:
-
     def __init__(self, padding_value=0, labels_padding_value=-100):
-
         self.padding_value = padding_value
         self.labels_padding_value = labels_padding_value
 
     def __call__(self, batch):
-
         collated_batch = {}
 
         for key in batch[0].keys():
-
             if np.isscalar(batch[0][key]):
                 collated_batch[key] = torch.tensor([example[key] for example in batch])
                 continue

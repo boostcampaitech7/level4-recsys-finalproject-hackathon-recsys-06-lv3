@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 import torch
 import yaml
-from recommenders.evaluation.python_evaluation import (map_at_k, ndcg_at_k,
-                                                       recall_at_k)
+from recommenders.evaluation.python_evaluation import map_at_k, ndcg_at_k, recall_at_k
 from tqdm.auto import tqdm
 
 
@@ -23,7 +22,6 @@ def load_model(model, path):
 
 
 def compute_metrics(ground_truth, preds, k=10):
-
     if not hasattr(ground_truth, "rating"):
         ground_truth = ground_truth.assign(rating=1)
 
@@ -71,7 +69,6 @@ def compute_sampled_metrics(
     k=10,
     device="cuda",
 ):
-
     test = test.set_index("user_id")["item_id"].to_dict()
     all_items = item_counts.index.values
     item_weights = item_counts.values
@@ -83,7 +80,6 @@ def compute_sampled_metrics(
     user_count = 0
 
     for user in tqdm(predict_dataset):
-
         if user["user_id"] not in test:
             continue
 
@@ -124,7 +120,6 @@ def compute_sampled_metrics(
 
 
 def preds2recs(preds, item_mapping=None):
-
     user_ids = np.hstack([pred["user_ids"] for pred in preds])
     scores = np.vstack([pred["scores"] for pred in preds])
     preds = np.vstack([pred["preds"] for pred in preds])

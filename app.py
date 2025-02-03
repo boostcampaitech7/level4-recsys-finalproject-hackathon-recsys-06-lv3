@@ -17,12 +17,19 @@ import pytorch_lightning as pl
 import torch
 from clearml import Task
 from omegaconf import OmegaConf
-from pytorch_lightning.callbacks import (EarlyStopping, ModelCheckpoint,
-                                         ModelSummary, TQDMProgressBar)
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    ModelCheckpoint,
+    ModelSummary,
+    TQDMProgressBar,
+)
 from torch.utils.data import DataLoader
 
-from src.data.dataset import (CausalLMDataset, CausalLMPredictionDataset,
-                              PaddingCollateFn)
+from src.data.dataset import (
+    CausalLMDataset,
+    CausalLMPredictionDataset,
+    PaddingCollateFn,
+)
 from src.models import SASRec
 from src.modules import SeqRec, SeqRecWithSampling
 from src.preprocess import MovieLensPreProcessor
@@ -31,7 +38,6 @@ from src.utils import compute_metrics, compute_sampled_metrics, preds2recs
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def main(config):
-
     print(OmegaConf.to_yaml(config))
 
     if hasattr(config, "cuda_visible_devices"):
@@ -48,9 +54,11 @@ def main(config):
         task = None
 
     print("전처리 중...")
-    preprocessor = MovieLensPreProcessor(config.data_path)
-    train, valid, valid_full, test, item_count = preprocessor._pre_process()
-    save_recommendations_to_csv(test, "test_set.csv")
+    preprocessor = MovieLensPreProcessor(
+        "MovieLens_20m", config.data_path, config.export_path
+    )
+    items, train, valid, valid_full, test = preprocessor.get_data()
+    item_count = preprocessor.item_count
     print("전처리 완료")
 
     mlflow_init(config, train, valid, test)
@@ -98,7 +106,6 @@ def mlflow_init(config, train, valid, test):
 
 
 def create_dataloaders(train, valid, config):
-
     valid_size = config.dataloader.valid_size
     valid_users = valid.user_id.unique()
     if valid_size and (valid_size < len(valid_users)):
@@ -129,7 +136,6 @@ def create_dataloaders(train, valid, config):
 
 
 def create_model(config, item_count):
-
     if hasattr(config.dataset, "num_negatives") and config.dataset.num_negatives:
         add_head = False
     else:
@@ -142,7 +148,6 @@ def create_model(config, item_count):
 
 
 def training(model, train_loader, eval_loader, config):
-
     if hasattr(config.dataset, "num_negatives") and config.dataset.num_negatives:
         seqrec_module = SeqRecWithSampling(model, **config["seqrec_module"])
     else:
@@ -177,7 +182,6 @@ def training(model, train_loader, eval_loader, config):
 
 
 def predict(trainer, seqrec_module, data, config):
-
     if config.model in ["SASRec", "GPT4Rec", "RNN"]:
         predict_dataset = CausalLMPredictionDataset(
             data, max_length=config.dataset.max_length
@@ -201,7 +205,6 @@ def predict(trainer, seqrec_module, data, config):
 
 
 def evaluate(recs, test, train, seqrec_module, dataset, task, config, prefix="test"):
-
     all_metrics = {}
     for k in config.top_k_metrics:
         metrics = compute_metrics(test, recs, k=k)
@@ -238,7 +241,6 @@ def evaluate(recs, test, train, seqrec_module, dataset, task, config, prefix="te
         print(popularity_metrics)
 
     if task:
-
         clearml_logger = task.get_logger()
 
         for key, value in all_metrics.items():
@@ -273,7 +275,6 @@ def save_recommendations_to_csv(recs, file_name):
 
 
 if __name__ == "__main__":
-
     main()
 
 

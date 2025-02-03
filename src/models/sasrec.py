@@ -4,7 +4,6 @@ from torch import nn
 
 
 class SASRec(nn.Module):
-
     def __init__(
         self,
         item_num,
@@ -16,7 +15,6 @@ class SASRec(nn.Module):
         initializer_range=0.02,
         add_head=True,
     ):
-
         super(SASRec, self).__init__()
 
         self.item_num = item_num
@@ -58,7 +56,6 @@ class SASRec(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
-
         if isinstance(module, (nn.Linear, nn.Conv1d)):
             module.weight.data.normal_(mean=0.0, std=self.initializer_range)
             if module.bias is not None:
@@ -73,7 +70,6 @@ class SASRec(nn.Module):
 
     # parameter attention mask added for compatibility with Lightning module, not used
     def forward(self, input_ids, attention_mask):
-
         seqs = self.item_emb(input_ids)
         seqs *= self.item_emb.embedding_dim**0.5
         positions = np.tile(
@@ -115,9 +111,7 @@ class SASRec(nn.Module):
 
 
 class PointWiseFeedForward(nn.Module):
-
     def __init__(self, hidden_units, dropout_rate):
-
         super(PointWiseFeedForward, self).__init__()
 
         self.conv1 = nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
