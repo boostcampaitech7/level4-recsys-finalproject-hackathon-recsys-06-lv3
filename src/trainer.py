@@ -25,7 +25,6 @@ class Trainer:
         num_items,
         config,
     ) -> None:
-
         self.criterion = criterion
         self.optimizer = optimizer
         self.train_df = train_df

@@ -160,7 +160,6 @@ class MovieLensPreProcessor(AbstractPreProcessor):
     def _split_train_valid_test(
         self, ratings
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
-
         # ratings 정렬 & time_idx 추가
         ratings = ratings.sort_values(["user_id", "timestamp"])
 
