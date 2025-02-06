@@ -5,4 +5,4 @@
 # SASRec+ 3000
 # python app.py dataset.max_length=200 +dataset.num_negatives=3000 SASRec.hidden_units=256
 # SASRec vanilla
-# python app.py dataset.max_length=200 +seqrec_module.loss=bce +dataset.num_negatives=1 dataset.full_negative_sampling=True SASRec.hidden_units=256
+# python app.py dataset.max_length=200 +seqrec_module.loss=bce +dataset.num_negatives=1 dataset.negative_sample="full" SASRec.hidden_units=256

@@ -7,7 +7,10 @@ export_path: "./data/processed"
 dataset:
   max_length: 50
   # num_negatives:
-  full_negative_sampling: False
+  negative_sample: 
+    type: "" # "popularity", "full", "" -> 빈값 처리 X
+    pop_type: "rank" # "rank-prob","count-prob","rank" Only used in popularity
+    weight_type: "top" # "top", "bot","mid" Only used in popularity
 
 dataloader:
   batch_size: 128

@@ -13,3 +13,5 @@ jupyter
 pynvml
 tqdm
 boto3
+#conda install -c conda-forge scikit-surprise
+recommenders
