@@ -188,3 +188,6 @@ outputs
 
 # pytorch_lightning
 lightning_logs
+*.pt
+*.pkl
+*.zip
