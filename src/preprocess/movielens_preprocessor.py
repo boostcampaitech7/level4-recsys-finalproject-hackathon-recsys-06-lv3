@@ -144,8 +144,18 @@ class MovieLensPreProcessor(AbstractPreProcessor):
         users_to_keep = ratings[ratings["timestamp"] >= 946684800]["user_id"].unique()
         ratings = ratings[ratings["user_id"].isin(users_to_keep)]
 
-        # 평점이 4.0 이상인 데이터만 사용
-        ratings = ratings[ratings["rating"] >= 4.0]
+        # 사용자와의 상호작용이 5개 이하인 아이템 필터링
+        item_counts = ratings.groupby("item_id").size().reset_index(name="count")
+        ratings = ratings[
+        ratings["item_id"].isin(item_counts[item_counts["count"] > 5]["item_id"])
+        ]
+
+        #최근 index 17개 삭제
+        indices_to_drop = ratings.groupby('user_id')['timestamp'].nlargest(17).reset_index(level=0, drop=True).index
+        ratings = ratings.drop(indices_to_drop)
+
+        # # 평점이 4.0 이상인 데이터만 사용
+        # ratings = ratings[ratings["rating"] >= 4.0]
 
         # 최소 3개 이상의 상호작용이 있는 유저 필터링
         user_counts = ratings.groupby("user_id").size().reset_index(name="count")

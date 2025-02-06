@@ -5,7 +5,6 @@ import yaml
 from recommenders.evaluation.python_evaluation import map_at_k, ndcg_at_k, recall_at_k
 from tqdm.auto import tqdm
 
-
 def get_config():
     with open("config.yaml", "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)

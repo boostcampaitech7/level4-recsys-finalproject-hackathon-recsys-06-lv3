@@ -54,6 +54,7 @@ def main(config):
         task = None
 
     print("전처리 중...")
+    np.random.seed(42)
     preprocessor = MovieLensPreProcessor(
         "MovieLens_20m", config.data_path, config.export_path
     )
