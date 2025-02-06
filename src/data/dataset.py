@@ -6,26 +6,26 @@ import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
+import pandas as pd
 
 
 class LMDataset(Dataset):
     def __init__(
         self,
-        df,
+        df: pd.DataFrame,
         max_length=128,
         num_negatives=None,
-        full_negative_sampling=True,
+        negative_sample={"type": "full"},
         user_col="user_id",
         item_col="item_id",
         time_col="time_idx",
     ):
         self.max_length = max_length
         self.num_negatives = num_negatives
-        self.full_negative_sampling = full_negative_sampling
+        self.negative_sample = negative_sample["type"]
         self.user_col = user_col
         self.item_col = item_col
         self.time_col = time_col
-
         self.data = (
             df.sort_values(time_col).groupby(user_col)[item_col].agg(list).to_dict()
         )
@@ -33,24 +33,65 @@ class LMDataset(Dataset):
 
         if num_negatives:
             self.all_items = df[item_col].unique()
+        if num_negatives and self.negative_sample == "popularity":
+            self.pop_type = negative_sample["pop_type"]
+            self.weight_type = negative_sample["weight_type"]
+            self._calculate_popularity(df)
+
+    def _calculate_popularity(self, df):
+        popularity = df["item_id"].value_counts().reset_index()["item_id"]
+        if self.weight_type == "bot":
+            popularity /= popularity + 1
+        if self.weight_type == "mid":
+            popularity = popularity.mean() / (popularity + 1)
+        if self.pop_type == "rank" or self.pop_type == "rank-prob":
+            popularity = popularity.rank(method="max", ascending=True)
+        self.popularity = popularity.to_numpy()
+
+        self.num_items = len(self.popularity)
+        self.prob_distribution = self.popularity / np.sum(self.popularity)
 
     def __len__(self):
         return len(self.data)
 
     def sample_negatives(self, item_sequence):
         negatives = self.all_items[~np.isin(self.all_items, item_sequence)]
-        if self.full_negative_sampling:
+        # pos_item = self.all_items[item_sequence]
+        if self.negative_sample == "full":
             negatives = np.random.choice(
                 negatives,
                 size=self.num_negatives * (len(item_sequence) - 1),
                 replace=True,
             )
             negatives = negatives.reshape(len(item_sequence) - 1, self.num_negatives)
+        elif self.negative_sample == "popularity":
+            assert (
+                self.num_negatives != None
+            ), "config.yaml에 num_negatives를 입력해주세요."
+            negatives = self._popularity_negatives(item_sequence)
         else:
+            # Default Random Choice
             negatives = np.random.choice(
                 negatives, size=self.num_negatives, replace=False
             )
 
+        return negatives
+
+    def _popularity_negatives(self, item_sequence):
+        neg_tf_list = ~np.isin(self.all_items, item_sequence)
+        negatives = self.all_items[neg_tf_list]
+        if self.pop_type == "rank":
+            # negatives = self.popularity[neg_tf_list]
+            negatives = negatives[np.argsort(a=self.popularity[neg_tf_list])]
+            return negatives[: self.num_negatives]
+        # Negative Sampling 수행 (인기도 기반 확률 분포를 사용)
+        prob_dist = self.prob_distribution[~np.isin(self.all_items, item_sequence)]
+        # item sequence 제외 probability 재 계산
+        prob_dist = prob_dist / np.sum(prob_dist)
+        # item sequence 제외 추천
+        negatives = np.random.choice(
+            negatives, self.num_negatives, p=prob_dist, replace=False
+        )
         return negatives
 
 
@@ -60,7 +101,7 @@ class CausalLMDataset(LMDataset):
         df,
         max_length=128,
         num_negatives=None,
-        full_negative_sampling=True,
+        negative_sample={"type": "full"},
         user_col="user_id",
         item_col="item_id",
         time_col="time_idx",
@@ -70,7 +111,7 @@ class CausalLMDataset(LMDataset):
             df,
             max_length,
             num_negatives,
-            full_negative_sampling,
+            negative_sample,
             user_col,
             item_col,
             time_col,

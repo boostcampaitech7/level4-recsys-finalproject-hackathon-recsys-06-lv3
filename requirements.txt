@@ -19,4 +19,5 @@ clearml
 hydra-core
 omegaconf
 pytorch-lightning
+#conda install -c conda-forge scikit-surprise
 recommenders
