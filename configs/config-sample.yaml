@@ -39,4 +39,10 @@ top_k_metrics: [10, 100]
 epochs: 100
   
 mlflow:
+  # run_name: 
   tracking_uri: server:port
+  description: |
+    mlflow description 작성해주세요.
+    들여쓰기만 맞추면 됩니다.
+  user : User
+  
