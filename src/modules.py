@@ -148,15 +148,59 @@ class SeqRecWithSampling(SeqRec):
         padding_idx=0,
         predict_top_k=10,
         filter_seen=True,
+        lambda_value=0.5,
+        temperature=1,
+        similarity_threshold=0.9,
+        similarity_indicies=None,
+        similarity_value=None,
     ):
         super().__init__(model, lr, padding_idx, predict_top_k, filter_seen)
 
         self.loss = loss
-
+        if self.loss == "sim_rec":
+            self.lambda_value = lambda_value
+            self.temperature = temperature
+            self.similarity_threshold = similarity_threshold
+            self.sim_matrix = torch.load(
+                similarity_indicies, map_location="cuda"
+            )  # Indicies
+            self.sim_score = torch.load(similarity_value, map_location="cuda")  # Values
+            self._init_sim_rec()
         if hasattr(self.model, "item_emb"):  # for SASRec
             self.embed_layer = self.model.item_emb
         elif hasattr(self.model, "embed_layer"):  # for other models
             self.embed_layer = self.model.embed_layer
+
+    def _init_sim_rec(self):
+        if self.similarity_threshold < 1:
+            self.sim_score[self.sim_score <= self.similarity_threshold] = -float("inf")
+        else:
+            # make the self similarity maximal
+            self.sim_matrix = torch.arange(
+                self.sim_matrix.shape[0], device="cuda"
+            ).reshape(-1, 1)
+            self.sim_score = torch.ones_like(self.sim_matrix)
+        self.sim_matrix += 1
+        self.sim_matrix = torch.concat(
+            [
+                torch.arange((self.sim_matrix.shape[1]), device="cuda").unsqueeze(
+                    dim=0
+                ),
+                self.sim_matrix,
+            ],
+            dim=0,
+        )
+        self.sim_score = torch.concat(
+            [
+                torch.full(
+                    (1, self.sim_score.shape[1]),
+                    fill_value=-float("inf"),
+                    device="cuda",
+                ),
+                self.sim_score,
+            ],
+            dim=0,
+        )
 
     def compute_loss(self, outputs, batch):
         # embed  and compute logits for negatives
@@ -211,6 +255,25 @@ class SeqRecWithSampling(SeqRec):
             loss = loss[batch["labels"] != -100]
             loss = loss.mean()
 
+        if self.loss == "sim_rec":
+            targets = torch.zeros_like(logits)
+            targets[:, :, 0] = 1
+            bce_fct = nn.BCEWithLogitsLoss(reduction="none")
+            bce_loss = bce_fct(logits, targets)
+            bce_loss = bce_loss[batch["labels"] != -100]
+            bce_loss = bce_loss.mean()
+            # target_dist = self._create_similarity_distribution(logits_labels)
+            # loss = (
+            #     self.lambda_value
+            #     * cross_entropy_criterion(
+            #         logits_flat / self.temperature, targets_dist
+            #     )
+            #     + (1 - lambd) * loss
+            # )
+            sim_loss = -torch.sum(
+                self.sim_matrix * torch.log(self.sim_score + 1e-10)
+            )  # Prevent log(0)
+            loss = (1 - self.lambda_value) * bce_loss + self.lambda_value * sim_loss
         return loss
 
     def prediction_output(self, batch):
@@ -218,3 +281,30 @@ class SeqRecWithSampling(SeqRec):
         outputs = torch.matmul(outputs, self.embed_layer.weight.T)
 
         return outputs
+
+    def _create_similarity_distribution(self, positive_indices):
+
+        num_items = self.sim_matrix.shape[0]
+        num_positives = positive_indices.shape[0]
+        # (num_positives, top_k_similar)
+        pos_similarity_indices = torch.index_select(
+            self.sim_matrix, index=positive_indices, dim=0
+        )
+        pos_similarity_values = torch.index_select(
+            self.sim_score, index=positive_indices, dim=0
+        )
+
+        # (num_positives, num_items)
+        similarities = torch.full(
+            (num_positives, num_items),
+            fill_value=-float("inf"),
+            device=self.sim_matrix.device,
+        )
+        similarities.scatter_(
+            dim=1, index=pos_similarity_indices, src=pos_similarity_values
+        )
+
+        similarities /= self.temperature
+
+        distribution = torch.nn.functional.softmax(similarities, dim=-1)
+        return distribution

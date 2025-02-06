@@ -13,5 +13,11 @@ jupyter
 pynvml
 tqdm
 boto3
+transformers
+sentence-transformers
+clearml
+hydra-core
+omegaconf
+pytorch-lightning
 #conda install -c conda-forge scikit-surprise
 recommenders
