@@ -7,7 +7,7 @@ export_path: "./data/processed"
 dataset:
   max_length: 50
   # num_negatives:
-  negative_sample: "full" # "popularity", "full", None
+  negative_sample: "" # "popularity", "full", "" -> 빈값 처리 X
 
 dataloader:
   batch_size: 128
