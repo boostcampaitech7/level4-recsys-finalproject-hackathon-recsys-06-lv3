@@ -69,8 +69,7 @@ def main(config):
     start_time = time.time()
     trainer, seqrec_module = training(model, train_loader, eval_loader, config)
     training_time = time.time() - start_time
-    mlflow.log_text(f"Training Time: {training_time}")
-
+    mlflow.log_param("Training-Time", training_time)
     print("training_time", training_time)
 
     recs_valid, valid_dataset = predict(trainer, seqrec_module, train, config)
@@ -110,9 +109,12 @@ def mlflow_init(config, train, valid, test):
         description=config["mlflow"]["description"],
     )
     mlflow.log_params(config)
-    mlflow.data.pandas_dataset.from_pandas(train, name="train_df")
-    mlflow.data.pandas_dataset.from_pandas(valid, name="valid_df")
-    mlflow.data.pandas_dataset.from_pandas(test, name="test_df")
+    mf_train = mlflow.data.pandas_dataset.from_pandas(train, name="train_df")
+    mf_valid = mlflow.data.pandas_dataset.from_pandas(valid, name="valid_df")
+    mf_test = mlflow.data.pandas_dataset.from_pandas(test, name="test_df")
+    mlflow.log_input(mf_train, "train_df")
+    mlflow.log_input(mf_valid, "valid_df")
+    mlflow.log_input(mf_test, "test_df")
 
 
 def create_dataloaders(train, valid, config):
