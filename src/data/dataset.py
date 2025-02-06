@@ -56,9 +56,13 @@ class LMDataset(Dataset):
                 replace=True,
             )
             negatives = negatives.reshape(len(item_sequence) - 1, self.num_negatives)
-        elif self.negative_sample == "popularity":
-            # Negative Sampling 수행 (인기도 기반 확률 분포를 사용)
+        elif (
+            self.negative_sample == "popularity"
+        ):  # Negative Sampling 수행 (인기도 기반 확률 분포를 사용)
             prob_dist = self.prob_distribution[~np.isin(self.all_items, item_sequence)]
+            # item sequence 제외 probability 재 계산
+            prob_dist = prob_dist / np.sum(prob_dist)
+            # item sequence 제외 추천
             negatives = np.random.choice(
                 negatives, self.num_negatives, p=prob_dist, replace=False
             )
