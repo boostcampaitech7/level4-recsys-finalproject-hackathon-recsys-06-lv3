@@ -6,22 +6,23 @@ import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
+import pandas as pd
 
 
 class LMDataset(Dataset):
     def __init__(
         self,
-        df,
+        df: pd.DataFrame,
         max_length=128,
         num_negatives=None,
-        full_negative_sampling=True,
+        negative_sample="full",
         user_col="user_id",
         item_col="item_id",
         time_col="time_idx",
     ):
         self.max_length = max_length
         self.num_negatives = num_negatives
-        self.full_negative_sampling = full_negative_sampling
+        self.negative_sample = negative_sample
         self.user_col = user_col
         self.item_col = item_col
         self.time_col = time_col
@@ -31,6 +32,14 @@ class LMDataset(Dataset):
         )
         self.user_ids = list(self.data.keys())
 
+        if num_negatives and self.negative_sample == "popularity":
+
+            self.popularity = (
+                df["item_id"].value_counts().reset_index()["item_id"].tolist()
+            )
+            self.num_items = len(self.popularity)
+            self.prob_distribution = self.popularity / np.sum(self.popularity)
+
         if num_negatives:
             self.all_items = df[item_col].unique()
 
@@ -39,13 +48,20 @@ class LMDataset(Dataset):
 
     def sample_negatives(self, item_sequence):
         negatives = self.all_items[~np.isin(self.all_items, item_sequence)]
-        if self.full_negative_sampling:
+        # pos_item = self.all_items[item_sequence]
+        if self.negative_sample == "full":
             negatives = np.random.choice(
                 negatives,
                 size=self.num_negatives * (len(item_sequence) - 1),
                 replace=True,
             )
             negatives = negatives.reshape(len(item_sequence) - 1, self.num_negatives)
+        elif self.negative_sample == "popularity":
+            # Negative Sampling 수행 (인기도 기반 확률 분포를 사용)
+            prob_dist = self.prob_distribution[~np.isin(self.all_items, item_sequence)]
+            negatives = np.random.choice(
+                negatives, self.num_negatives, p=prob_dist, replace=False
+            )
         else:
             negatives = np.random.choice(
                 negatives, size=self.num_negatives, replace=False
@@ -60,7 +76,7 @@ class CausalLMDataset(LMDataset):
         df,
         max_length=128,
         num_negatives=None,
-        full_negative_sampling=True,
+        negative_sample="full",
         user_col="user_id",
         item_col="item_id",
         time_col="time_idx",
@@ -70,7 +86,7 @@ class CausalLMDataset(LMDataset):
             df,
             max_length,
             num_negatives,
-            full_negative_sampling,
+            negative_sample,
             user_col,
             item_col,
             time_col,
