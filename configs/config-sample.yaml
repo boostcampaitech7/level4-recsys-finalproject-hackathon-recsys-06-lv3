@@ -7,7 +7,7 @@ export_path: "./data/processed"
 dataset:
   max_length: 50
   # num_negatives:
-  negative_sample: "popularity" # popularity, Normal
+  negative_sample: "popularity" # "popularity", "full", None
 
 dataloader:
   batch_size: 128
