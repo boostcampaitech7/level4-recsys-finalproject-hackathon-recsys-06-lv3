@@ -15,7 +15,7 @@ class LMDataset(Dataset):
         df: pd.DataFrame,
         max_length=128,
         num_negatives=None,
-        negative_sample="",
+        negative_sample="full",
         user_col="user_id",
         item_col="item_id",
         time_col="time_idx",
