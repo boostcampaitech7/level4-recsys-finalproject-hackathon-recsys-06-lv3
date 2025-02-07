@@ -51,5 +51,5 @@ mlflow:
   description: |
     mlflow description 작성해주세요.
     들여쓰기만 맞추면 됩니다.
-  user : User
+  user : YDS
   
