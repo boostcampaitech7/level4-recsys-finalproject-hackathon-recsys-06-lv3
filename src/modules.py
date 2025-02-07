@@ -7,6 +7,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 class SeqRecBase(pl.LightningModule):
@@ -111,10 +112,62 @@ class SeqRecBase(pl.LightningModule):
 
 class SeqRec(SeqRecBase):
     def __init__(
-        self, model, lr=1e-3, padding_idx=0, predict_top_k=10, filter_seen=True
+        self,
+        model,
+        lr=1e-3,
+        padding_idx=0,
+        predict_top_k=10,
+        filter_seen=True,
+        loss="cross_entropy",
+        lambda_value=0.5,
+        temperature=1,
+        similarity_threshold=0.9,
+        similarity_indicies=None,
+        similarity_value=None,
     ):
         super().__init__(model, lr, padding_idx, predict_top_k, filter_seen)
+        self.loss = loss
+        if self.loss == "sim_rec":
+            self.lambda_value = lambda_value
+            self.temperature = temperature
+            self.similarity_threshold = similarity_threshold
+            self.sim_matrix = torch.load(
+                similarity_indicies, map_location="cuda"
+            )  # Indicies
+            self.sim_score = torch.load(similarity_value, map_location="cuda")  # Values
+            self._init_sim_rec()
         self.training_step_outputs = []
+
+    def _init_sim_rec(self):
+        if self.similarity_threshold < 1:
+            self.sim_score[self.sim_score <= self.similarity_threshold] = -float("inf")
+        else:
+            # make the self similarity maximal
+            self.sim_matrix = torch.arange(
+                self.sim_matrix.shape[0], device="cuda"
+            ).reshape(-1, 1)
+            self.sim_score = torch.ones_like(self.sim_matrix)
+        self.sim_matrix += 1
+        self.sim_matrix = torch.concat(
+            [
+                torch.arange((self.sim_matrix.shape[1]), device="cuda").unsqueeze(
+                    dim=0
+                ),
+                self.sim_matrix,
+            ],
+            dim=0,
+        )
+        self.sim_score = torch.concat(
+            [
+                torch.full(
+                    (1, self.sim_score.shape[1]),
+                    fill_value=-float("inf"),
+                    device="cuda",
+                ),
+                self.sim_score,
+            ],
+            dim=0,
+        )
 
     def training_step(self, batch, batch_idx):
         outputs = self.model(batch["input_ids"], batch["attention_mask"])
@@ -125,8 +178,22 @@ class SeqRec(SeqRecBase):
         return loss
 
     def compute_loss(self, outputs, batch):
-        loss_fct = nn.CrossEntropyLoss()
-        loss = loss_fct(outputs.view(-1, outputs.size(-1)), batch["labels"].view(-1))
+        if self.loss == "sim_rec":
+            target = batch["labels"].clone()
+            target[target == -100] = 0
+            target = F.one_hot(target.view(-1), num_classes=outputs.shape[2]).float()
+            bce_fct = nn.BCEWithLogitsLoss(reduction="none")
+            bce_loss = bce_fct(outputs.view(-1, outputs.size(-1)), target)
+            bce_loss = bce_loss.mean()
+            sim_loss = -torch.sum(
+                self.sim_matrix * torch.log(self.sim_score + 1e-10)
+            )  # Prevent log(0)
+            loss = (1 - self.lambda_value) * bce_loss + self.lambda_value * sim_loss
+        else:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(
+                outputs.view(-1, outputs.size(-1)), batch["labels"].view(-1)
+            )
 
         return loss
 
@@ -234,22 +301,16 @@ class SeqRecWithSampling(SeqRec):
         # [N, T, M + 1]
         logits = torch.cat([logits_labels.unsqueeze(2), logits_negatives], dim=-1)
 
-        # prepare targets for loss
         if self.loss == "cross_entropy":
             # [N, T]
             targets = batch["labels"].clone()
             targets[targets != -100] = 0
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, logits.size(-1)), targets.view(-1))
         elif self.loss == "bce":
             # [N, T, M + 1]
             targets = torch.zeros_like(logits)
             targets[:, :, 0] = 1
-
-        if self.loss == "cross_entropy":
-            loss_fct = nn.CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, logits.size(-1)), targets.view(-1))
-        elif self.loss == "bce":
-            # loss_fct = nn.BCEWithLogitsLoss()
-            # loss = loss_fct(logits, targets)
             loss_fct = nn.BCEWithLogitsLoss(reduction="none")
             loss = loss_fct(logits, targets)
             loss = loss[batch["labels"] != -100]
@@ -261,15 +322,8 @@ class SeqRecWithSampling(SeqRec):
             bce_fct = nn.BCEWithLogitsLoss(reduction="none")
             bce_loss = bce_fct(logits, targets)
             bce_loss = bce_loss[batch["labels"] != -100]
-            bce_loss = bce_loss.mean()
-            # target_dist = self._create_similarity_distribution(logits_labels)
-            # loss = (
-            #     self.lambda_value
-            #     * cross_entropy_criterion(
-            #         logits_flat / self.temperature, targets_dist
-            #     )
-            #     + (1 - lambd) * loss
-            # )
+            # bce_loss = bce_loss.mean()
+
             sim_loss = -torch.sum(
                 self.sim_matrix * torch.log(self.sim_score + 1e-10)
             )  # Prevent log(0)
