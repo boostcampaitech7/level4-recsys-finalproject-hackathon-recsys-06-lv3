@@ -11,6 +11,7 @@ import mlflow
 import mlflow.data.dataset_registry
 import mlflow.data.dataset_source
 import mlflow.data.pandas_dataset
+import mlflow.entities
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
@@ -103,10 +104,12 @@ def mlflow_init(config, train, valid, test):
         run_name = config["mlflow"]["run_name"]
     else:
         run_name = f"{config['model']}-{config['mlflow']['user']}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    exp = mlflow.get_experiment_by_name(config["mlflow"]["user"])
     mlflow.start_run(
         run_name=run_name,
         log_system_metrics=True,
         description=config["mlflow"]["description"],
+        experiment_id=exp.experiment_id,
     )
     mlflow.log_params(config)
     mf_train = mlflow.data.pandas_dataset.from_pandas(train, name="train_df")
@@ -206,6 +209,7 @@ def predict(trainer, seqrec_module, data, config):
         collate_fn=PaddingCollateFn(),
         batch_size=config.dataloader.test_batch_size,
         num_workers=config.dataloader.num_workers,
+        persistent_workers=True,
     )
 
     seqrec_module.predict_top_k = max(config.top_k_metrics)
