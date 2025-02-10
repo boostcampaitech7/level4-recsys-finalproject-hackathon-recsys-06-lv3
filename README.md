@@ -133,8 +133,6 @@ recommenders
 7. Cold Start 개선 전략
 8. 결론
 9. Appendix
-10. 회고
-</aside>
 
 ---
 
@@ -371,9 +369,8 @@ Data Sparsity 99.46 → 99.09%
 $$
 \mathcal{L}_{BCE} = -\sum_{u \in U} \sum_{t=1}^{n_u} \log(\sigma (r_{t,i_t}^{(u)})) + \log(1-\sigma(r_{t,-}^{(u)}))
 \\
- \mathcal{L}_{CE} = -\sum_{u \in U} \sum_{t \in T_u} \log \frac{\exp(r_{t,i_t}^{(u)})}{\sum_{i \in I} \exp(r_{t,i}^{(u)})}
+\mathcal{L}_{CE} = -\sum_{u \in U} \sum_{t \in T_u} \log \frac{\exp(r_{t,i_t}^{(u)})}{\sum_{i \in I} \exp(r_{t,i}^{(u)})}
 \\
-
 $$
 
 - 방법 : Baseline인 BCE를 적용한 SASRec과 CE를 적용한 SASRec을 같은 실험 환경에서 진행
@@ -392,7 +389,7 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
 - 가설 : CE를 모든 item에 대해 계산하지 않아도, Negative Sampling Pool이 충분히 크면 그 안에서 CE를 계산하는 것이 Performance-Cost 사이의 trade-off를 줄일 수 있을 것이라 가정
 
 $$
-  \mathcal{L}_{CE-sampled} = -\sum_{u \in U} \sum_{t=1}^{n_u} \log \frac{\exp(r_{t,i_t}^{(u)})}{\exp(r_{t,i_t}^{(u)}) + \sum_{i \in I^{-(u)}_N} \exp(r_{t,i}^{(u)})}
+\mathcal{L}_{CE-sampled} = -\sum_{u \in U} \sum_{t=1}^{n_u} \log \frac{\exp(r_{t,i_t}^{(u)})}{\exp(r_{t,i_t}^{(u)}) + \sum_{i \in I^{-(u)}_N} \exp(r_{t,i}^{(u)})}
 $$
 
 - CE SASRec:
