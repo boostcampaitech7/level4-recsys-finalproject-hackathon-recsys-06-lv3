@@ -366,12 +366,7 @@ Data Sparsity 99.46 → 99.09%
     - 현재 Task는 User가 특정 Item 소비 예측인 Binary Classification이 아닌, 다수의 Item 중 어떤 Item의 소비 가능성이 가장 클 것이냐를 예측하는 Multi-Class Classification Problem
     - 따라서 모델이 전체 Item에 대해 Positive Item의 상대적 우선순위를 학습하는 것이 전반적인 모델의 성능을 향상시킬 것이라 가정
 
-$$
-\mathcal{L}_{BCE} = -\sum_{u \in U} \sum_{t=1}^{n_u} \log(\sigma (r_{t,i_t}^{(u)})) + \log(1-\sigma(r_{t,-}^{(u)}))
-\\
-\mathcal{L}_{CE} = -\sum_{u \in U} \sum_{t \in T_u} \log \frac{\exp(r_{t,i_t}^{(u)})}{\sum_{i \in I} \exp(r_{t,i}^{(u)})}
-\\
-$$
+![image](https://github.com/user-attachments/assets/02a36623-51cb-43c8-a795-333bb4175411)
 
 - 방법 : Baseline인 BCE를 적용한 SASRec과 CE를 적용한 SASRec을 같은 실험 환경에서 진행
 - 결론
@@ -388,9 +383,7 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
 
 - 가설 : CE를 모든 item에 대해 계산하지 않아도, Negative Sampling Pool이 충분히 크면 그 안에서 CE를 계산하는 것이 Performance-Cost 사이의 trade-off를 줄일 수 있을 것이라 가정
 
-$$
-\mathcal{L}_{CE-sampled} = -\sum_{u \in U} \sum_{t=1}^{n_u} \log \frac{\exp(r_{t,i_t}^{(u)})}{\exp(r_{t,i_t}^{(u)}) + \sum_{i \in I^{-(u)}_N} \exp(r_{t,i}^{(u)})}
-$$
+![image](https://github.com/user-attachments/assets/941983ec-c918-4855-ae2b-84a194229d8b)
 
 - CE SASRec:
     - Non-User Interaction Item에 대해, 1000개 단위의 Uniform Random Sampling을 통한 N.S Pool 생성
