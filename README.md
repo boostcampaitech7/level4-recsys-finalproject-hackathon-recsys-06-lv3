@@ -169,11 +169,12 @@ MovieLens-20M 데이터셋으로 SASRec 기반 추천시스템을 개발 후 </b
 - 기간 : 1995-01-09 11:46:44 (789652004) ~ 2015-03-31 06:40:02 (1427784002)
 - 전체 평점 분포
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A041938f9-29bf-4a20-a55a-613f5223b23c%3Aimage.png?table=block&id=a772327c-5e7a-439c-b563-5aee81f40953&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/dfc1ba8d-8d53-4459-8b90-fbe3d8b4e51a)
 
 - User별 평균 144개, 중앙값 68개, 최대 9,254개, 최소 20개 평점 등록
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A6beded44-d0f0-4fb7-971f-674ba3643f27%3Aimage.png?table=block&id=6b09f458-4e31-4b87-9ccf-8a31e300b0d2&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/889ae00d-0b24-4d50-b497-21c2bbe9ca2d)
+
 
 - Item별 평점 개수는 평균 747개, 최대 67,310개(펄프 픽션), 최소 1개(영화 3,972편)
 
@@ -187,7 +188,7 @@ MovieLens-20M 데이터셋으로 SASRec 기반 추천시스템을 개발 후 </b
 - Drama, Documentary가 양의 상관관계가 보이고, Horror는 음의 상관관계가 보이나 
 전반적으로 장르와 평점의 상관관계는 크지 않음
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A92b87bde-181a-46c7-adfa-1305a191220f%3Aimage.png?table=block&id=008bcb89-cdc7-485c-9cc3-a7c33ca6b8c3&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=1060&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/e73886cd-f53f-4197-97cc-b47f53063a7a)
 
 ---
 
@@ -277,14 +278,15 @@ Hitrate@k = Recall@k = 10 x Precision@k의 관계가 성립
 
 - 마지막 상호작용이 2000년 이전인 User들의 분포와 성능 편차가 커서 균일한 실험환경 조성을 위해 최근 15년 동안 상호작용이 있었던 User로 Dataset을 한정
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A12f743be-8df9-4f47-900d-a733fe46af41%3Aimage.png?table=block&id=1956ac11-5bd2-808b-af07-e2c4d8320c92&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=1420&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/5e02799f-cca1-4366-b798-cdedcda5047f)
+
 
 ## 5-3. User의 최근 상호작용을 일부 제거해 Cold Start User 생성
 
 - 원본 데이터는 User의 최소 상호작용 개수가 20개 → **Cold Start User 부재**
 - User 중 일부를 Random Sampling해 상호작용 일부를 제거하면 아래의 그래프처럼 random seed에 따라 실험의 편차가 발생해 부적합하다고 판단
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3Ac34b400e-9034-49d1-ade8-98f2b0ac49a6%3Aimage.png?table=block&id=86d6ba58-bffb-4d32-9d19-e8cd1bf902a5&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/8d86b41a-98af-4985-9c41-4ba547eb3e49)
 
 - **적용:** 균일한 실험 결과를 위해 전체 User에 대해 최근 상호작용을 일부 제거해 상호작용 ****20개 미만의 Cold Start User 생성
 
@@ -309,7 +311,8 @@ Data Sparsity 99.46 → 99.09%
 
 ## 6-2. Cold Start 정의
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3Aba1df151-48e6-49e2-a7df-1f9bf0b5251e%3Aimage.png?table=block&id=909ef489-67a8-4393-a0f6-617fbc9b10dc&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/b9659797-24f5-47c2-a421-935f239b5c27)
+
 
 - Count  = User당 상호작용 수(Sequence 길이)
 - 여기서 Count는 User의 전체 상호작용 수로 train+valid+test 데이터 모두 포함
@@ -345,9 +348,11 @@ Data Sparsity 99.46 → 99.09%
 - 방법 : Baseline인 BCE를 적용한 SASRec과 CE를 적용한 SASRec을 같은 실험 환경에서 진행
 - 결론
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A6f5808f3-2314-4cfc-9103-7fd01cac0648%3Aimage.png?table=block&id=1956ac11-5bd2-8052-9062-ff8e6e3635fe&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/9c51bec9-63c5-4167-a1b1-a213dc138c82)
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3Afe69fbb7-1902-4ffd-a341-6fb7e00534ba%3Aimage.png?table=block&id=1946ac11-5bd2-80bd-b5d5-c64f6fa57d08&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+
+![image](https://github.com/user-attachments/assets/f41307dd-29d4-4343-be36-6bd2fd78743a)
+
 
 - 전반적인 성능지표 향상 및 hitrate@10에서 
 Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) 향상
@@ -362,7 +367,7 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
 - CE SASRec:
     - Non-User Interaction Item에 대해, 1000개 단위의 Uniform Random Sampling을 통한 N.S Pool 생성
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A7f09e3c1-32f1-4e4b-8a4f-c4c1023d0847%3Aimage.png?table=block&id=1946ac11-5bd2-803d-8542-d6ba23c4353e&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/093b9c3d-567c-4541-adca-20e5a64b9eca)
 
 | **hitrate@10** | **CE** | **CE 2000** | **CE 3000** | **CE 5000** |
 | --- | --- | --- | --- | --- |
@@ -389,7 +394,8 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
 | Cold User | 0.1874 | 0.0048 | 0.1808 | **0.1924** | 0.0880 | 0.0892 |
 | Warm User | 0.2460 | 0.0058 | 0.2356 | **0.2487** | 0.1412 | 0.1393 |
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A1ede7d61-2ffd-4e01-a495-5c0db86e9a5c%3Aimage.png?table=block&id=1956ac11-5bd2-80a5-9bd7-e060734b55c9&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=1020&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/8f740f43-7236-4e63-99c0-8671e9e7e5e6)
+
 
 - Rank : Top, Mid, Bot 모두에서 성능 대폭 하락
 - Rank-Prob : **Mid에서 2.7%의 성능 향상**
@@ -414,7 +420,8 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
     - n 값 변경 (1, 3, 5, 10)
 - 실험 결과 : 모든 실험에서 Baseline 성능에 비해 하락
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A7f7539ff-ec29-474d-92a6-5959662643a5%3Aimage.png?table=block&id=1946ac11-5bd2-80bb-8c83-fe8c3943e98b&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=1420&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/e5b13e5f-d217-458c-a2a6-a51449922f1e)
+
 
 - 결론
     - Sequential 모델에서는 User가 상호작용한 Item의 순서가 중요한데, 임의적인 증강 item 배치가 Cold Start User 학습에 Noise로 작용해 성능이 하락한 것으로 추론
@@ -427,7 +434,8 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
 - 방법 : SIMRec 논문에 따라, Title Textual 기반의 Similarity 계산(by Sentence Transformer)
 - 실험 : SASRec Baseline + Rank Prob(Mid) 환경에서 SIMRec 적용
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3Aa2695816-f9df-481c-aa23-204eb3364d12%3Aimage.png?table=block&id=1956ac11-5bd2-8022-a926-fd8bd59acdde&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/6db35987-a7f8-4fc8-99b7-823c675f1507)
+
 
 - 결론 : **Drop** - 훈련 시간이 매우 길어지면서, 성능도 기존 Loss Function에 비해 개선 없음
 - 제언 :
@@ -472,7 +480,8 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
     - 하지만 다양성(coverage, serendipity) 측면에서 trade-off 발생하므로
     추천 시스템의 목적에 따라 Threshold 적용 수치를 신중히 고려해야 함
 
-![image.png](https://rigorous-shoemaker-76b.notion.site/image/attachment%3A73d4a982-50dd-41f4-a37d-7a94e2e0ebe4%3Aimage.png?table=block&id=1956ac11-5bd2-807f-8322-fbe7983cf8ad&spaceId=f94927b0-a808-4d85-ba53-90de2dc55693&width=2000&userId=&cache=v2)
+![image](https://github.com/user-attachments/assets/0614e744-2526-430f-8b10-45fa9f85d160)
+
 
 ---
 
