@@ -207,8 +207,4 @@ class PaddingCollateFn:
                 values, batch_first=True, padding_value=padding_value
             )
 
-        if "input_ids" in collated_batch:
-            attention_mask = collated_batch["input_ids"] != self.padding_value
-            collated_batch["attention_mask"] = attention_mask.to(dtype=torch.float32)
-
         return collated_batch

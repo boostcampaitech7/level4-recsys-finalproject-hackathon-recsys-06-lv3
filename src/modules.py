@@ -170,7 +170,7 @@ class SeqRec(SeqRecBase):
         )
 
     def training_step(self, batch, batch_idx):
-        outputs = self.model(batch["input_ids"], batch["attention_mask"])
+        outputs = self.model(batch["input_ids"])
         loss = self.compute_loss(outputs, batch)
 
         self.training_step_outputs.append(loss.item())
@@ -198,7 +198,7 @@ class SeqRec(SeqRecBase):
         return loss
 
     def prediction_output(self, batch):
-        return self.model(batch["input_ids"], batch["attention_mask"])
+        return self.model(batch["input_ids"])
 
     def on_train_epoch_end(self):
         avg_loss = np.mean(self.training_step_outputs)
@@ -331,7 +331,7 @@ class SeqRecWithSampling(SeqRec):
         return loss
 
     def prediction_output(self, batch):
-        outputs = self.model(batch["input_ids"], batch["attention_mask"])
+        outputs = self.model(batch["input_ids"])
         outputs = torch.matmul(outputs, self.embed_layer.weight.T)
 
         return outputs
