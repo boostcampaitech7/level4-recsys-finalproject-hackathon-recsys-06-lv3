@@ -69,7 +69,7 @@ class SASRec(nn.Module):
             module.weight.data.fill_(1.0)
 
     # parameter attention mask added for compatibility with Lightning module, not used
-    def forward(self, input_ids, attention_mask):
+    def forward(self, input_ids):
         seqs = self.item_emb(input_ids)
         seqs *= self.item_emb.embedding_dim**0.5
         positions = np.tile(

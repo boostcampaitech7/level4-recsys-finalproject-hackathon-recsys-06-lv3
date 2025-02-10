@@ -5,6 +5,7 @@ import yaml
 from recommenders.evaluation.python_evaluation import map_at_k, ndcg_at_k, recall_at_k
 from tqdm.auto import tqdm
 
+
 def get_config():
     with open("config.yaml", "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
@@ -95,12 +96,7 @@ def compute_sampled_metrics(
         )
         items = np.concatenate([np.array([positive]), negatives])
 
-        batch = {
-            "input_ids": torch.tensor(user["input_ids"]).unsqueeze(0).to(device),
-            "attention_mask": torch.tensor([1] * len(user["input_ids"]))
-            .unsqueeze(0)
-            .to(device),
-        }
+        batch = {"input_ids": torch.tensor(user["input_ids"]).unsqueeze(0).to(device)}
         pred = seqrec_module.prediction_output(batch)
         pred = pred[0, -1, items]
 
