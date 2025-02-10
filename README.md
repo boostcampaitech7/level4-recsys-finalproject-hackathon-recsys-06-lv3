@@ -377,7 +377,7 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
 
 - 가설 : N.S Pool을 Uniform Random Sapling에서 Popularity based로 바꾸면 성능에 긍정적 영향
 - 기반 : Top Rank Negative Sample, Popularity Based Negative Sample
-- 방법 : 총 9가지 방법**(Rank / Rank-Probability / Count-Probability) X (Top / Mid / Bot)**
+- 방법 : 총 9가지 방법 **(Rank / Rank-Probability / Count-Probability) X (Top / Mid / Bot)**
     - **Rank** : 인기도 랭킹 기반 위치(Top, Mid, Bot 중 선택된)로 고정해 순서대로 뽑는 방법
     - **Rank-Prob** : 인기도 랭킹 기반 확률 분포를 활용하여 R.S
     - **Count-Prob** : Item Interaction Count 기반 확률 분포 활용하여 R.S
