@@ -9,24 +9,26 @@
 
 ```bash
 ├── src # AI 모델 학습을 위한 부분
-│   ├── config # config.yaml 값 가져 오는 함수 제공
-│   ├── model # AI 모델 src ex) Light GBM, XGBoost
-│   └── pre_process # 모델 학습전 전처리
-│   └── custom_wandb
-│   └── plot 
-│   └── server 
-├── data #.gitignore
+│   ├── /data # 모델 학습을 위한 dataset으로 가공하는 module
+│   ├── /models # AI 모델 src ex) CF, SASRec, etc..
+│   └── /preprocess # 모델 학습전 전처리
+│   └── modules.py # sequence 혹은 sampling별 데이터셋 처리를 위한 modules
+│   └── trainer.py # 효율적인 학습을 위한 trainer.py
+│   └── utils.py # 각종 지표 및 함수를 위한 utils.py
+├── data 
 │   └── .csv #.gitignore
-│     └── processed # 기타 csv 저장을 위한 저장소
-|     └── raw # 원본 csv 저장을 위한 저장소
-├── EDA # 개인 EDA 폴더
+│   └── processed/*.csv # .gitignore 전처리된 csv 저장을 위한 저장소
+├── notebooks # 개인 Jupyter Notebooks 폴더
 │   └── {팀원 명} 
 │        ├──*.ipynb
-├── app.py # 모델 학습을 위한 python 파일
-├── config-sample.yaml # 하이퍼 파라미터 및 모델 & 서버 선택을 위한 설정 값
+├── configs/config-sample.yaml # 하이퍼 파라미터 및 모델 선택을 위한 설정 값
+├── .env.sample # github 유저 혹은 server 설정을 위한 .env
 ├── .gitignore
 ├── Readme.md
-└── requirements.txt
+├── requirements.txt
+├── *.sh # GPU 서버 사용을 쉽게 하기 위한 .sh파일들들
+└── app.py # 모델 학습을 위한 python 파일
+
 ```
 
 </details>
@@ -73,35 +75,7 @@ recommenders
 4. **AI 학습 서버 3**
 5. **AI 학습 서버 4**
 
-### 서버 및 스토리지 연결성 시각화
-
-```plaintext
-+---------------------+       +---------------------+
-|                     |       |                     |
-|  AI 학습 서버 1     +------>+                     |
-|                     |       |                     |
-+---------------------+       |                     |
-                              |                     |
-+---------------------+       |                     |
-|                     |       |                     |
-|  AI 학습 서버 2     +------>+                     |
-|                     |       |                     |
-+---------------------+       |                     |
-                              |                     |
-+---------------------+       |                     |
-|                     |       |                     |
-|  AI 학습 서버 3     +------>+ Naver Cloud 서버    |
-|                     |       |  (MLFlow 서버)      +------> Naver Object Storage
-+---------------------+       |                     |
-                              |                     |
-+---------------------+       |                     |
-|                     |       |                     |
-|  AI 학습 서버 4     +------>+                     |
-|                     |       |                     |
-+---------------------+       |                     |
-                              |                     |
-                              +---------------------+
-````
+![alt text](service-arch.png)
 
 ### MLFlow Tracking 설정
 
