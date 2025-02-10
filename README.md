@@ -509,11 +509,11 @@ Warm User 성능 향상(35.7%) 대비 Cold User에서의 더 큰 성능(80.6%) �
 | 이름 | 역할 |
 | --- | --- |
 | [김건율](https://github.com/ChoonB) | 팀장, 데이터 분석, 전처리, 프로젝트 실험 및 코드 관리, N.S Pool 생성 |
-| [백우성](https://github.com/13aek) |  |
+| [백우성](https://github.com/13aek) | SASRec 모델링 및 실험, Augmentation 기법 개발, 실험 결과 분석 |
 | [유대선](https://github.com/xenx96) | GNN 계열 모델 & 샘플링 기법 개발, 실험 관리 및 추적, 프로젝트 구조 및 코드 컨벤션 관리 |
 | [이제준](https://github.com/passi3) | EDA, 전처리, 기본 추천 모델링 및 테스트, 가설 검토 및 판단 |
-| [김성윤](https://github.com/Timeisfast) |  |
-| [박승우](https://github.com/zip-sa) |  |
+| [김성윤](https://github.com/Timeisfast) | MultiVAE / SASRec 모델 구현, Side information 추가 실험 |
+| [박승우](https://github.com/zip-sa) | BERT4Rec 모델링, Sequential 모델 실험, 프로젝트 협업 환경 구축, 프로젝트 Docs 정리 |
 
 ## 9-2. 협업 방식
 
