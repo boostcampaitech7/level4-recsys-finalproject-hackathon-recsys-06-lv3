@@ -32,39 +32,7 @@
 ```
 
 </details>
-<details>
-    <summary> 라이브러리 버전</summary>
 
-**Python 버전 : 3.12.5**
-
-**Library 정보** - (requirements.txt)
-
-```txt
-mlflow
-torch
-torchvision
-pandas
-numpy
-scikit-learn
-pyyaml
-python-dotenv
-black
-isort
-flake8
-jupyter
-pynvml
-tqdm
-boto3
-transformers
-sentence-transformers
-clearml
-hydra-core
-omegaconf
-pytorch-lightning
-#conda install -c conda-forge scikit-surprise
-recommenders
-```
-</details> 
 <details>
 <summary> Server Structure </summary>
 
